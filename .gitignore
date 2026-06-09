@@ -1,0 +1,35 @@
+# Build outputs
+target/
+backend/target/
+dist/
+build/
+out/
+
+# Runtime logs and crash dumps
+*.log
+backend/*.log
+backend/*.pid
+hs_err_pid*.log
+debug.log
+
+# Local IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dependency folders
+node_modules/
+
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+*.local
+application-local.yml
+application-local.yaml
+
+# Temporary files
+tmp/
+temp/
+*.tmp

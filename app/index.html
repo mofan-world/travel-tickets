@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>出差车票管理系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+          </div>
+          <div>
+            <strong>出差车票管理系统</strong>
+            <small>Travel Ticket Ops</small>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item is-active" data-view="overview" title="总览">
+            <span class="icon">#</span>
+            <span>总览</span>
+          </button>
+          <button class="nav-item" data-view="tickets" title="车票">
+            <span class="icon">T</span>
+            <span>车票</span>
+          </button>
+          <button class="nav-item" data-view="approvals" title="审批">
+            <span class="icon">OK</span>
+            <span>审批</span>
+          </button>
+          <button class="nav-item" data-view="risk" title="风控">
+            <span class="icon">!</span>
+            <span>风控</span>
+          </button>
+        </nav>
+
+        <div class="capacity">
+          <div class="capacity-title">容量画像</div>
+          <div class="capacity-row">
+            <span>注册用户</span>
+            <strong>1,000,000</strong>
+          </div>
+          <div class="capacity-row">
+            <span>峰值写入</span>
+            <strong>2,500/s</strong>
+          </div>
+          <div class="capacity-row">
+            <span>SLA</span>
+            <strong>99.95%</strong>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">运营控制台</p>
+            <h1>车票归集、审批与报销闭环</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="refreshBtn" title="刷新数据" aria-label="刷新数据">R</button>
+            <button class="primary-action" id="openCreateTicket">新增车票</button>
+          </div>
+        </header>
+
+        <section class="filters" aria-label="筛选条件">
+          <label>
+            <span>城市</span>
+            <select id="cityFilter">
+              <option value="全部">全部</option>
+              <option value="北京">北京</option>
+              <option value="上海">上海</option>
+              <option value="深圳">深圳</option>
+              <option value="杭州">杭州</option>
+            </select>
+          </label>
+          <label>
+            <span>状态</span>
+            <select id="statusFilter">
+              <option value="全部">全部</option>
+              <option value="待审核">待审核</option>
+              <option value="已核销">已核销</option>
+              <option value="异常">异常</option>
+              <option value="待补票">待补票</option>
+            </select>
+          </label>
+          <label class="search-field">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="员工 / 车次 / 票号" />
+          </label>
+          <div class="segmented" role="group" aria-label="时间范围">
+            <button class="is-selected" data-range="7">7天</button>
+            <button data-range="30">30天</button>
+            <button data-range="90">90天</button>
+          </div>
+        </section>
+
+        <section class="metric-grid" aria-label="关键指标">
+          <article class="metric">
+            <span>本月车票</span>
+            <strong id="metricTickets">0</strong>
+            <small>高铁、火车、城际交通</small>
+          </article>
+          <article class="metric">
+            <span>待审核金额</span>
+            <strong id="metricPending">¥0</strong>
+            <small>自动聚合发票与行程单</small>
+          </article>
+          <article class="metric">
+            <span>异常率</span>
+            <strong id="metricRisk">0%</strong>
+            <small>重复票、超标、缺失凭证</small>
+          </article>
+          <article class="metric">
+            <span>平均处理时长</span>
+            <strong id="metricSla">0h</strong>
+            <small>审批到报销入账</small>
+          </article>
+        </section>
+
+        <section class="work-grid">
+          <div class="panel ticket-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">车票池</p>
+                <h2>实时车票记录</h2>
+              </div>
+              <button class="ghost-action" id="exportBtn">导出</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>员工</th>
+                    <th>路线</th>
+                    <th>车次</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="ticketTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel side-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">审批队列</p>
+                <h2>优先处理</h2>
+              </div>
+            </div>
+            <div id="approvalQueue" class="queue"></div>
+          </div>
+
+          <div class="panel trend-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">费用趋势</p>
+                <h2>城市与票种分布</h2>
+              </div>
+            </div>
+            <div class="chart" id="trendChart" aria-label="费用趋势图"></div>
+          </div>
+
+          <div class="panel risk-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">风险预警</p>
+                <h2>需要复核</h2>
+              </div>
+            </div>
+            <div id="riskList" class="risk-list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="ticketDialog">
+      <form method="dialog" class="dialog-form" id="ticketForm">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">新建记录</p>
+            <h2>新增出差车票</h2>
+          </div>
+          <button class="icon-button" id="closeDialog" type="button" title="关闭" aria-label="关闭">X</button>
+        </div>
+        <div class="form-grid">
+          <label>
+            <span>员工姓名</span>
+            <input name="employee" required placeholder="如：周明" />
+          </label>
+          <label>
+            <span>部门</span>
+            <input name="department" required placeholder="如：华东销售" />
+          </label>
+          <label>
+            <span>出发城市</span>
+            <input name="from" required placeholder="如：上海" />
+          </label>
+          <label>
+            <span>到达城市</span>
+            <input name="to" required placeholder="如：北京" />
+          </label>
+          <label>
+            <span>车次</span>
+            <input name="train" required placeholder="如：G12" />
+          </label>
+          <label>
+            <span>金额</span>
+            <input name="amount" required type="number" min="1" step="0.01" placeholder="553.00" />
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost-action" id="cancelTicket" type="button">取消</button>
+          <button class="primary-action" type="submit" value="default">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
