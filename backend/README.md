@@ -152,3 +152,23 @@ curl -X POST http://localhost:8080/api/v1/approvals/tickets/1/actions `
 ```powershell
 curl http://localhost:8080/actuator/health
 ```
+
+## IDEA 控制台日志
+
+后端已配置 `logback-spring.xml`，在 IntelliJ IDEA 中直接运行 `TravelTicketApplication` 时，Run 控制台会输出启动日志和 `/api/**` 接口访问日志。
+
+推荐 IDEA Run Configuration：
+
+```text
+Main class: com.codex.travel.ticket.TravelTicketApplication
+JDK: 17
+Working directory: backend
+Environment variables:
+NACOS_ENABLED=true;NACOS_SERVER_ADDR=127.0.0.1:8848;ES_ENABLED=true;ES_URIS=http://127.0.0.1:9200
+```
+
+接口日志示例：
+
+```text
+HTTP GET /api/v1/tickets?page=0&size=20 status=200 elapsed=35ms tenant=10001
+```

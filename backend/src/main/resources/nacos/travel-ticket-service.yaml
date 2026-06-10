@@ -59,6 +59,11 @@ management:
       enabled: ${ES_ENABLED:true}
 
 logging:
+  charset:
+    console: UTF-8
   level:
+    root: INFO
     com.codex.travel.ticket: INFO
     org.springframework.data.elasticsearch.client.WIRE: OFF
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
