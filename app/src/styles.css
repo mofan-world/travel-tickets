@@ -454,6 +454,12 @@ td small {
   font-size: 12px;
 }
 
+.row-actions .danger-text {
+  color: var(--red);
+  border-color: #ffd0c9;
+  background: #fff7f5;
+}
+
 .stack-list {
   display: grid;
   gap: 10px;
@@ -522,6 +528,102 @@ td small {
 .dialog-actions {
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(18, 48, 55, 0.45);
+}
+
+.confirm-dialog {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  width: min(480px, 100%);
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ffd0c9;
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(18, 48, 55, 0.28);
+}
+
+.confirm-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  color: var(--red);
+  background: #fff0ed;
+  border: 1px solid #ffd0c9;
+  border-radius: 8px;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.confirm-copy {
+  min-width: 0;
+}
+
+.confirm-copy h2,
+.confirm-copy p {
+  margin: 0;
+}
+
+.confirm-copy h2 {
+  font-size: 22px;
+}
+
+.confirm-copy > p:not(.eyebrow) {
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.confirm-copy strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.confirm-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.confirm-meta span {
+  min-height: 28px;
+  padding: 5px 9px;
+  color: #5d201b;
+  background: #fff7f5;
+  border: 1px solid #ffd0c9;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.confirm-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.danger-action {
+  min-height: 40px;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--red);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  font-weight: 800;
 }
 
 .toast {
@@ -636,5 +738,14 @@ td small {
 
   .topbar h1 {
     font-size: 30px;
+  }
+
+  .confirm-dialog {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

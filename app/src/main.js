@@ -226,6 +226,7 @@ createApp({
     const toast = ref("");
     const editingId = ref("");
     const showTicketForm = ref(false);
+    const deleteTarget = ref(null);
     const loading = ref(false);
     const tickets = ref([]);
     const riskEvents = ref([]);
@@ -487,13 +488,23 @@ createApp({
       }).catch((error) => showMessage(error.message));
     }
 
-    async function removeTicket(ticketId) {
-      if (!window.confirm("确认删除这张车票吗？")) {
+    function removeTicket(ticket) {
+      deleteTarget.value = ticket;
+    }
+
+    function cancelDelete() {
+      deleteTarget.value = null;
+    }
+
+    async function confirmRemoveTicket() {
+      const ticket = deleteTarget.value;
+      if (!ticket) {
         return;
       }
       await runWithLoading(async () => {
-        await api(`/api/v1/tickets/${ticketId}`, { method: "DELETE" });
+        await api(`/api/v1/tickets/${ticket.id}`, { method: "DELETE" });
         showMessage("车票已删除，并清理 Redis 与 ES");
+        deleteTarget.value = null;
         await reloadData();
       }).catch((error) => showMessage(error.message));
     }
@@ -569,6 +580,9 @@ createApp({
       apiBase,
       authMode,
       currentUser,
+      cancelDelete,
+      confirmRemoveTicket,
+      deleteTarget,
       editableStatuses,
       editableTicketTypes,
       editingId,
