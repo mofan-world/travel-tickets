@@ -1,13 +1,55 @@
-const { createApp, computed, reactive, ref } = window.Vue;
+const { createApp, computed, onMounted, reactive, ref } = window.Vue;
 
-const USERS_KEY = "travel-ticket-users";
 const SESSION_KEY = "travel-ticket-session";
-const TICKETS_KEY = "travel-ticket-tickets";
+const API_BASE_KEY = "travel-ticket-api-base";
+const apiBase = localStorage.getItem(API_BASE_KEY) || "http://127.0.0.1:8080";
+
+const statusEnum = {
+  全部: "",
+  待审批: "PENDING_REVIEW",
+  已通过: "APPROVED",
+  已驳回: "REJECTED",
+  待补票: "MISSING_ATTACHMENT",
+  异常: "EXCEPTION",
+  已核销: "REIMBURSED",
+};
+
+const statusLabel = Object.fromEntries(Object.entries(statusEnum).map(([label, value]) => [value, label]));
+
+const riskLabel = {
+  NONE: "无",
+  LOW: "低",
+  MEDIUM: "中",
+  HIGH: "高",
+  CRITICAL: "严重",
+};
+
+const riskEnum = Object.fromEntries(Object.entries(riskLabel).map(([value, label]) => [label, value]));
+
+const ticketTypeEnum = {
+  高铁: "HIGH_SPEED_RAIL",
+  动车: "EMU",
+  普铁: "TRAIN",
+  城际: "INTERCITY",
+  飞机: "FLIGHT",
+  其他: "OTHER",
+};
+
+const ticketTypeLabel = Object.fromEntries(Object.entries(ticketTypeEnum).map(([label, value]) => [value, label]));
+
+const attachmentEnum = {
+  已上传: "UPLOADED",
+  缺失: "MISSING",
+};
+
+const attachmentLabel = {
+  UPLOADED: "已上传",
+  MISSING: "缺失",
+};
 
 const sampleTickets = [
   {
-    id: "T20260610001",
-    employeeId: "E10086",
+    employeeId: 10086,
     employeeName: "沈韵",
     department: "华东销售部",
     tripPurpose: "上海重点客户拜访",
@@ -21,12 +63,9 @@ const sampleTickets = [
     amount: 553,
     status: "待审批",
     attachmentStatus: "已上传",
-    riskLevel: "低",
-    createdAt: "2026-06-10 09:12",
   },
   {
-    id: "T20260610002",
-    employeeId: "E20018",
+    employeeId: 20018,
     employeeName: "罗启",
     department: "交付中心",
     tripPurpose: "项目验收",
@@ -40,12 +79,9 @@ const sampleTickets = [
     amount: 468,
     status: "已核销",
     attachmentStatus: "已上传",
-    riskLevel: "无",
-    createdAt: "2026-06-10 08:30",
   },
   {
-    id: "T20260610003",
-    employeeId: "E30027",
+    employeeId: 30027,
     employeeName: "陈伊",
     department: "财务共享",
     tripPurpose: "总部会议",
@@ -59,12 +95,9 @@ const sampleTickets = [
     amount: 1667,
     status: "异常",
     attachmentStatus: "已上传",
-    riskLevel: "高",
-    createdAt: "2026-06-09 18:42",
   },
   {
-    id: "T20260610004",
-    employeeId: "E40032",
+    employeeId: 40032,
     employeeName: "唐硕",
     department: "北区运营",
     tripPurpose: "门店巡检",
@@ -78,8 +111,6 @@ const sampleTickets = [
     amount: 68,
     status: "待补票",
     attachmentStatus: "缺失",
-    riskLevel: "中",
-    createdAt: "2026-06-09 16:10",
   },
 ];
 
@@ -94,32 +125,6 @@ function readJson(key, fallback) {
 
 function writeJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
-}
-
-function defaultUsers() {
-  return [
-    {
-      name: "系统管理员",
-      company: "示例集团",
-      email: "admin@travel.local",
-      password: "admin123",
-    },
-  ];
-}
-
-function loadUsers() {
-  const users = readJson(USERS_KEY, null);
-  if (users) return users;
-  const seeded = defaultUsers();
-  writeJson(USERS_KEY, seeded);
-  return seeded;
-}
-
-function loadTickets() {
-  const tickets = readJson(TICKETS_KEY, null);
-  if (tickets) return tickets;
-  writeJson(TICKETS_KEY, sampleTickets);
-  return sampleTickets.map((ticket) => ({ ...ticket }));
 }
 
 function emptyTicketForm() {
@@ -141,6 +146,79 @@ function emptyTicketForm() {
   };
 }
 
+function toInstant(value) {
+  if (!value) {
+    return null;
+  }
+  return new Date(value).toISOString();
+}
+
+function toLocalDateTime(value) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function toEmployeeId(value) {
+  const digits = String(value).replace(/\D/g, "");
+  return Number(digits || value);
+}
+
+function mapTicket(item) {
+  return {
+    id: item.id || item.ticketId,
+    tenantId: item.tenantId,
+    employeeId: item.employeeId,
+    employeeName: item.employeeName || `员工${item.employeeId}`,
+    department: item.department || "未分配部门",
+    tripPurpose: item.tripPurpose || "未填写事由",
+    ticketType: ticketTypeLabel[item.travelType] || item.travelType || "其他",
+    ticketNo: item.ticketNo,
+    carrierNo: item.carrierNo,
+    departureCity: item.departureCity,
+    arrivalCity: item.arrivalCity,
+    departureAt: toLocalDateTime(item.departAt),
+    arriveAt: toLocalDateTime(item.arriveAt),
+    seatClass: item.seatClass || "",
+    amount: Number(item.amount || 0),
+    currency: item.currency || "CNY",
+    status: statusLabel[item.status] || item.status || "待审批",
+    attachmentStatus: attachmentLabel[item.attachmentStatus] || item.attachmentStatus || "已上传",
+    riskLevel: riskLabel[item.riskLevel] || item.riskLevel || "无",
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
+}
+
+function toPayload(form) {
+  return {
+    employeeId: toEmployeeId(form.employeeId),
+    employeeName: form.employeeName.trim(),
+    department: form.department.trim(),
+    ticketNo: form.ticketNo.trim(),
+    externalSource: "WEB",
+    externalTicketId: form.ticketNo.trim(),
+    travelType: ticketTypeEnum[form.ticketType] || "OTHER",
+    departureCity: form.departureCity.trim(),
+    arrivalCity: form.arrivalCity.trim(),
+    carrierNo: form.carrierNo.trim(),
+    seatClass: form.seatClass.trim(),
+    tripPurpose: form.tripPurpose.trim(),
+    attachmentStatus: attachmentEnum[form.attachmentStatus] || "UPLOADED",
+    departAt: toInstant(form.departureAt),
+    arriveAt: null,
+    amount: Number(form.amount),
+    currency: "CNY",
+    status: statusEnum[form.status] || "PENDING_REVIEW",
+  };
+}
+
 createApp({
   setup() {
     const authMode = ref("login");
@@ -148,11 +226,20 @@ createApp({
     const toast = ref("");
     const editingId = ref("");
     const showTicketForm = ref(false);
-    const tickets = ref(loadTickets());
+    const loading = ref(false);
+    const tickets = ref([]);
+    const riskEvents = ref([]);
+
+    const metrics = reactive({
+      total: 0,
+      pendingAmount: 0,
+      riskRate: 0,
+      approved: 0,
+    });
 
     const loginForm = reactive({
-      email: "",
-      password: "",
+      email: "admin@travel.local",
+      password: "admin123",
     });
 
     const registerForm = reactive({
@@ -208,29 +295,43 @@ createApp({
       });
     });
 
-    const metrics = computed(() => {
-      const rows = tickets.value;
-      const pending = rows.filter((ticket) => ["待审批", "待补票", "异常"].includes(ticket.status));
-      const risk = rows.filter((ticket) => ticket.riskLevel !== "无");
-      const approved = rows.filter((ticket) => ["已通过", "已核销"].includes(ticket.status));
-      return {
-        total: rows.length,
-        pendingAmount: pending.reduce((sum, ticket) => sum + Number(ticket.amount || 0), 0),
-        riskRate: rows.length ? Math.round((risk.length / rows.length) * 100) : 0,
-        approved: approved.length,
-      };
+    const pendingTickets = computed(() => tickets.value.filter((ticket) => ticket.status === "待审批").slice(0, 5));
+    const riskTickets = computed(() => {
+      if (riskEvents.value.length) {
+        return riskEvents.value.map((event) => ({
+          id: event.ticketId,
+          employeeName: event.employeeName,
+          department: event.department,
+          ticketNo: event.ticketNo,
+          carrierNo: event.carrierNo,
+          departureCity: event.route?.split(" -> ")[0] || "",
+          arrivalCity: event.route?.split(" -> ")[1] || "",
+          attachmentStatus: attachmentLabel[event.attachmentStatus] || event.attachmentStatus,
+          riskLevel: riskLabel[event.riskLevel] || event.riskLevel,
+        }));
+      }
+      return tickets.value.filter((ticket) => ticket.riskLevel !== "无").slice(0, 5);
     });
 
-    const pendingTickets = computed(() => tickets.value.filter((ticket) => ticket.status === "待审批").slice(0, 5));
-    const riskTickets = computed(() => tickets.value.filter((ticket) => ticket.riskLevel !== "无").slice(0, 5));
+    async function api(path, options = {}) {
+      const headers = {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+      };
+      if (options.tenant !== false && currentUser.value?.tenantId) {
+        headers["X-Tenant-Id"] = currentUser.value.tenantId;
+      }
 
-    function persistTickets() {
-      writeJson(TICKETS_KEY, tickets.value);
-    }
-
-    function resetTicketForm() {
-      Object.assign(ticketForm, emptyTicketForm());
-      editingId.value = "";
+      const response = await fetch(`${apiBase}${path}`, {
+        method: options.method || "GET",
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.message || `请求失败：${response.status}`);
+      }
+      return payload?.data;
     }
 
     function showMessage(message) {
@@ -238,47 +339,95 @@ createApp({
       window.clearTimeout(showMessage.timer);
       showMessage.timer = window.setTimeout(() => {
         toast.value = "";
-      }, 2200);
+      }, 2600);
     }
 
-    function login() {
-      const users = loadUsers();
-      const email = loginForm.email.trim().toLowerCase();
-      const found = users.find((user) => user.email === email && user.password === loginForm.password);
-      if (!found) {
-        showMessage("邮箱或密码不正确");
-        return;
+    async function runWithLoading(task) {
+      loading.value = true;
+      try {
+        return await task();
+      } finally {
+        loading.value = false;
       }
-      currentUser.value = { name: found.name, company: found.company, email: found.email };
-      writeJson(SESSION_KEY, currentUser.value);
-      showMessage("登录成功");
     }
 
-    function register() {
-      const name = registerForm.name.trim();
-      const company = registerForm.company.trim();
-      const email = registerForm.email.trim().toLowerCase();
+    async function login() {
+      await runWithLoading(async () => {
+        const user = await api("/api/v1/auth/login", {
+          method: "POST",
+          tenant: false,
+          body: loginForm,
+        });
+        currentUser.value = user;
+        writeJson(SESSION_KEY, user);
+        showMessage("登录成功");
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
+    }
 
-      if (registerForm.password.length < 6) {
-        showMessage("密码至少 6 位");
-        return;
-      }
-      const users = loadUsers();
-      if (users.some((user) => user.email === email)) {
-        showMessage("该邮箱已注册");
-        return;
-      }
-      const user = { name, company, email, password: registerForm.password };
-      users.push(user);
-      writeJson(USERS_KEY, users);
-      currentUser.value = { name: user.name, company: user.company, email: user.email };
-      writeJson(SESSION_KEY, currentUser.value);
-      showMessage("注册成功");
+    async function register() {
+      await runWithLoading(async () => {
+        const user = await api("/api/v1/auth/register", {
+          method: "POST",
+          tenant: false,
+          body: registerForm,
+        });
+        currentUser.value = user;
+        writeJson(SESSION_KEY, user);
+        showMessage("注册成功");
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
     }
 
     function logout() {
       currentUser.value = null;
       localStorage.removeItem(SESSION_KEY);
+      tickets.value = [];
+      riskEvents.value = [];
+    }
+
+    async function reloadData() {
+      if (!currentUser.value) {
+        return;
+      }
+
+      await runWithLoading(async () => {
+        const status = statusEnum[filters.status];
+        const query = new URLSearchParams({ page: "0", size: "100" });
+        if (status) {
+          query.set("status", status);
+        }
+
+        let listResult;
+        if (filters.query.trim()) {
+          const search = new URLSearchParams({ q: filters.query.trim(), page: "0", size: "100" });
+          try {
+            listResult = await api(`/api/v1/search/tickets?${search}`);
+          } catch {
+            listResult = await api(`/api/v1/tickets?${query}`);
+            showMessage("ES 搜索不可用，已回退到数据库列表");
+          }
+        } else {
+          listResult = await api(`/api/v1/tickets?${query}`);
+        }
+
+        const [summary, risks] = await Promise.all([
+          api("/api/v1/reports/summary"),
+          api("/api/v1/risk/events"),
+        ]);
+
+        tickets.value = (listResult?.items || []).map(mapTicket);
+        riskEvents.value = risks || [];
+        metrics.total = summary?.ticketCount || 0;
+        metrics.pendingAmount = Number(summary?.pendingAmount || 0);
+        metrics.riskRate = Math.round(Number(summary?.riskRate || 0) * 100);
+        metrics.approved = tickets.value.filter((ticket) => ["已通过", "已核销"].includes(ticket.status)).length;
+      }).catch((error) => showMessage(error.message));
+    }
+
+    function resetTicketForm() {
+      Object.assign(ticketForm, emptyTicketForm());
+      editingId.value = "";
     }
 
     function openCreateForm() {
@@ -286,79 +435,95 @@ createApp({
       showTicketForm.value = true;
     }
 
-    function editTicket(ticket) {
-      Object.assign(ticketForm, {
-        employeeId: ticket.employeeId,
-        employeeName: ticket.employeeName,
-        department: ticket.department,
-        tripPurpose: ticket.tripPurpose,
-        ticketType: ticket.ticketType,
-        ticketNo: ticket.ticketNo,
-        carrierNo: ticket.carrierNo,
-        departureCity: ticket.departureCity,
-        arrivalCity: ticket.arrivalCity,
-        departureAt: ticket.departureAt,
-        seatClass: ticket.seatClass,
-        amount: ticket.amount,
-        status: ticket.status,
-        attachmentStatus: ticket.attachmentStatus,
-      });
-      editingId.value = ticket.id;
-      showTicketForm.value = true;
+    async function editTicket(ticket) {
+      await runWithLoading(async () => {
+        const detail = await api(`/api/v1/tickets/${ticket.id}`);
+        Object.assign(ticketForm, mapTicket(detail));
+        editingId.value = ticket.id;
+        showTicketForm.value = true;
+      }).catch((error) => showMessage(error.message));
     }
 
-    function evaluateRisk(ticket) {
-      if (ticket.attachmentStatus === "缺失") return "中";
-      if (Number(ticket.amount) >= 1200) return "高";
-      if (!ticket.departureAt) return "中";
-      return "无";
+    async function saveTicket() {
+      await runWithLoading(async () => {
+        const payload = toPayload(ticketForm);
+        if (editingId.value) {
+          await api(`/api/v1/tickets/${editingId.value}`, {
+            method: "PUT",
+            body: payload,
+          });
+          showMessage("车票已更新，并同步写入 Redis 与 ES");
+        } else {
+          await api("/api/v1/tickets", {
+            method: "POST",
+            body: payload,
+          });
+          showMessage("车票已新增，并同步写入 Redis 与 ES");
+        }
+        showTicketForm.value = false;
+        resetTicketForm();
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
     }
 
-    function saveTicket() {
-      const payload = {
-        ...ticketForm,
-        amount: Number(ticketForm.amount),
-        riskLevel: evaluateRisk(ticketForm),
-      };
-
-      if (editingId.value) {
-        tickets.value = tickets.value.map((ticket) => (ticket.id === editingId.value ? { ...ticket, ...payload } : ticket));
-        showMessage("车票已更新");
-      } else {
-        tickets.value = [
-          {
-            ...payload,
-            id: `T${Date.now()}`,
-            createdAt: new Date().toLocaleString("zh-CN", { hour12: false }),
-          },
-          ...tickets.value,
-        ];
-        showMessage("车票已新增");
+    async function updateStatus(ticket, status) {
+      const action = {
+        已通过: "approve",
+        已驳回: "reject",
+        待补票: "return",
+        已核销: "reimburse",
+        异常: "exception",
+      }[status];
+      if (!action) {
+        return;
       }
-      persistTickets();
-      showTicketForm.value = false;
-      resetTicketForm();
+      await runWithLoading(async () => {
+        await api(`/api/v1/approvals/tickets/${ticket.id}/actions`, {
+          method: "POST",
+          body: { action, comment: `前端操作：${status}` },
+        });
+        showMessage(`车票已更新为${status}`);
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
     }
 
-    function updateStatus(ticket, status) {
-      ticket.status = status;
-      if (status === "已通过" || status === "已核销") {
-        ticket.riskLevel = "无";
+    async function removeTicket(ticketId) {
+      if (!window.confirm("确认删除这张车票吗？")) {
+        return;
       }
-      persistTickets();
-      showMessage(`车票已更新为${status}`);
+      await runWithLoading(async () => {
+        await api(`/api/v1/tickets/${ticketId}`, { method: "DELETE" });
+        showMessage("车票已删除，并清理 Redis 与 ES");
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
     }
 
-    function removeTicket(ticketId) {
-      tickets.value = tickets.value.filter((ticket) => ticket.id !== ticketId);
-      persistTickets();
-      showMessage("车票已删除");
+    async function seedDemoData() {
+      await runWithLoading(async () => {
+        let created = 0;
+        for (const ticket of sampleTickets) {
+          try {
+            await api("/api/v1/tickets", {
+              method: "POST",
+              body: toPayload(ticket),
+            });
+            created++;
+          } catch (error) {
+            if (!error.message.includes("ticketNo already exists")) {
+              throw error;
+            }
+          }
+        }
+        showMessage(created ? `已导入 ${created} 条演示数据` : "演示数据已存在");
+        await reloadData();
+      }).catch((error) => showMessage(error.message));
     }
 
-    function resetDemoData() {
-      tickets.value = sampleTickets.map((ticket) => ({ ...ticket }));
-      persistTickets();
-      showMessage("演示数据已重置");
+    async function reindexSearch() {
+      await runWithLoading(async () => {
+        const count = await api("/api/v1/search/tickets/reindex", { method: "POST" });
+        showMessage(`已重建 ${count} 条 ES 索引`);
+      }).catch((error) => showMessage(error.message));
     }
 
     function exportCsv() {
@@ -394,7 +559,14 @@ createApp({
       }).format(value || 0);
     }
 
+    onMounted(() => {
+      if (currentUser.value) {
+        reloadData();
+      }
+    });
+
     return {
+      apiBase,
       authMode,
       currentUser,
       editableStatuses,
@@ -405,6 +577,7 @@ createApp({
       filteredTickets,
       login,
       loginForm,
+      loading,
       logout,
       metrics,
       money,
@@ -412,10 +585,12 @@ createApp({
       pendingTickets,
       register,
       registerForm,
+      reindexSearch,
+      reloadData,
       removeTicket,
-      resetDemoData,
       riskTickets,
       saveTicket,
+      seedDemoData,
       showTicketForm,
       statuses,
       ticketForm,

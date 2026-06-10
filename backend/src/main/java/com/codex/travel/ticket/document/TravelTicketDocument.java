@@ -28,8 +28,17 @@ public class TravelTicketDocument {
     @Field(type = FieldType.Long)
     private Long employeeId;
 
+    @Field(type = FieldType.Text)
+    private String employeeName;
+
+    @Field(type = FieldType.Keyword)
+    private String department;
+
     @Field(type = FieldType.Keyword)
     private String ticketNo;
+
+    @Field(type = FieldType.Keyword)
+    private String travelType;
 
     @Field(type = FieldType.Text)
     private String route;
@@ -42,6 +51,12 @@ public class TravelTicketDocument {
 
     @Field(type = FieldType.Keyword)
     private String carrierNo;
+
+    @Field(type = FieldType.Text)
+    private String tripPurpose;
+
+    @Field(type = FieldType.Keyword)
+    private String attachmentStatus;
 
     @Field(type = FieldType.Double)
     private BigDecimal amount;
@@ -61,11 +76,17 @@ public class TravelTicketDocument {
         document.tenantId = ticket.getTenantId();
         document.ticketId = ticket.getId();
         document.employeeId = ticket.getEmployeeId();
+        document.employeeName = ticket.getEmployeeName();
+        document.department = ticket.getDepartment();
         document.ticketNo = ticket.getTicketNo();
-        document.route = ticket.getDepartureCity() + " " + ticket.getArrivalCity() + " " + ticket.getCarrierNo();
+        document.travelType = ticket.getTravelType();
+        document.route = ticket.getDepartureCity() + " " + ticket.getArrivalCity() + " " + ticket.getCarrierNo()
+                + " " + ticket.getEmployeeName() + " " + ticket.getDepartment() + " " + ticket.getTripPurpose();
         document.departureCity = ticket.getDepartureCity();
         document.arrivalCity = ticket.getArrivalCity();
         document.carrierNo = ticket.getCarrierNo();
+        document.tripPurpose = ticket.getTripPurpose();
+        document.attachmentStatus = ticket.getAttachmentStatus();
         document.amount = ticket.getAmount();
         document.status = ticket.getStatus();
         document.riskLevel = ticket.getRiskLevel();
@@ -89,8 +110,20 @@ public class TravelTicketDocument {
         return employeeId;
     }
 
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
     public String getTicketNo() {
         return ticketNo;
+    }
+
+    public String getTravelType() {
+        return travelType;
     }
 
     public String getRoute() {
@@ -107,6 +140,14 @@ public class TravelTicketDocument {
 
     public String getCarrierNo() {
         return carrierNo;
+    }
+
+    public String getTripPurpose() {
+        return tripPurpose;
+    }
+
+    public String getAttachmentStatus() {
+        return attachmentStatus;
     }
 
     public BigDecimal getAmount() {

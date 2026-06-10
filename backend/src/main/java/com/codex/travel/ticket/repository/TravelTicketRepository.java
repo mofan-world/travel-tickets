@@ -1,6 +1,7 @@
 package com.codex.travel.ticket.repository;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,8 @@ public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long
 
     boolean existsByTenantIdAndTicketNo(Long tenantId, String ticketNo);
 
+    boolean existsByTenantIdAndTicketNoAndIdNot(Long tenantId, String ticketNo, Long id);
+
     long countByTenantId(Long tenantId);
 
     long countByTenantIdAndRiskLevelNot(Long tenantId, RiskLevel riskLevel);
@@ -32,4 +35,7 @@ public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long
 
     @Query("select coalesce(sum(t.amount), 0) from TravelTicket t where t.tenantId = :tenantId and t.status = :status")
     BigDecimal sumAmountByTenantIdAndStatus(@Param("tenantId") Long tenantId, @Param("status") TicketStatus status);
+
+    @Query("select coalesce(sum(t.amount), 0) from TravelTicket t where t.tenantId = :tenantId and t.status in :statuses")
+    BigDecimal sumAmountByTenantIdAndStatusIn(@Param("tenantId") Long tenantId, @Param("statuses") Collection<TicketStatus> statuses);
 }

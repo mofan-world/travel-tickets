@@ -32,7 +32,7 @@
               密码
               <input v-model="loginForm.password" type="password" autocomplete="current-password" required placeholder="admin123" />
             </label>
-            <button class="primary-action" type="submit">进入系统</button>
+            <button class="primary-action" type="submit" :disabled="loading">进入系统</button>
             <p class="hint">演示账号：admin@travel.local / admin123</p>
           </form>
 
@@ -53,9 +53,12 @@
               密码
               <input v-model="registerForm.password" type="password" autocomplete="new-password" required placeholder="至少 6 位" />
             </label>
-            <button class="primary-action" type="submit">注册并进入</button>
+            <button class="primary-action" type="submit" :disabled="loading">注册并进入</button>
           </form>
+
+          <p class="hint">后端接口：{{ apiBase }}</p>
         </section>
+        <div v-if="toast" class="toast">{{ toast }}</div>
       </main>
 
       <main v-else class="app-shell">
@@ -85,9 +88,12 @@
             <div>
               <p class="eyebrow">运营控制台</p>
               <h1>出差车票归集、审批与核销</h1>
+              <p class="hint">租户：{{ currentUser.tenantId }} · 数据来自 PostgreSQL，热点快照写入 Redis，搜索索引写入 Elasticsearch</p>
             </div>
             <div class="topbar-actions">
-              <button class="ghost-action" @click="resetDemoData">重置数据</button>
+              <button class="ghost-action" @click="reloadData" :disabled="loading">刷新</button>
+              <button class="ghost-action" @click="seedDemoData" :disabled="loading">导入演示数据</button>
+              <button class="ghost-action" @click="reindexSearch" :disabled="loading">重建 ES 索引</button>
               <button class="ghost-action" @click="exportCsv">导出 CSV</button>
               <button class="primary-action" @click="openCreateForm">新增车票</button>
             </div>
@@ -97,7 +103,7 @@
             <article class="metric">
               <span>车票总数</span>
               <strong>{{ metrics.total }}</strong>
-              <small>当前租户本地数据</small>
+              <small>PostgreSQL 持久化记录</small>
             </article>
             <article class="metric">
               <span>待处理金额</span>
@@ -119,24 +125,24 @@
           <section class="filters" aria-label="车票筛选">
             <label>
               搜索
-              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" />
+              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="reloadData" />
             </label>
             <label>
               状态
-              <select v-model="filters.status">
-                <option v-for="status in statuses" :key="status">{{ status }}</option>
+              <select v-model="filters.status" @change="reloadData">
+                <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
               </select>
             </label>
             <label>
               城市
               <select v-model="filters.city">
-                <option v-for="city in cities" :key="city">{{ city }}</option>
+                <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
               </select>
             </label>
             <label>
               票种
               <select v-model="filters.ticketType">
-                <option v-for="type in ticketTypes" :key="type">{{ type }}</option>
+                <option v-for="type in ticketTypes" :key="type" :value="type">{{ type }}</option>
               </select>
             </label>
           </section>
@@ -167,7 +173,7 @@
                     <tr v-for="ticket in filteredTickets" :key="ticket.id">
                       <td>
                         <strong>{{ ticket.employeeName }}</strong>
-                        <small>{{ ticket.department }}</small>
+                        <small>{{ ticket.department }} / {{ ticket.employeeId }}</small>
                       </td>
                       <td>
                         <strong>{{ ticket.departureCity }} -> {{ ticket.arrivalCity }}</strong>
@@ -175,7 +181,7 @@
                       </td>
                       <td>
                         <strong>{{ ticket.carrierNo }}</strong>
-                        <small>{{ ticket.ticketNo }}</small>
+                        <small>{{ ticket.ticketNo }} · {{ ticket.ticketType }}</small>
                       </td>
                       <td>{{ money(ticket.amount) }}</td>
                       <td><span class="status" :data-status="ticket.status">{{ ticket.status }}</span></td>
@@ -208,6 +214,7 @@
                     <button @click="updateStatus(ticket, '已通过')">通过</button>
                     <button @click="updateStatus(ticket, '已驳回')">驳回</button>
                     <button @click="updateStatus(ticket, '待补票')">补票</button>
+                    <button @click="updateStatus(ticket, '已核销')">核销</button>
                   </div>
                 </section>
                 <p v-if="!pendingTickets.length" class="empty">暂无待审批车票</p>
@@ -247,7 +254,7 @@
             <div class="form-grid">
               <label>
                 员工工号
-                <input v-model="ticketForm.employeeId" required placeholder="E10001" />
+                <input v-model="ticketForm.employeeId" required placeholder="10086" />
               </label>
               <label>
                 员工姓名
@@ -264,7 +271,7 @@
               <label>
                 票种
                 <select v-model="ticketForm.ticketType">
-                  <option v-for="type in editableTicketTypes" :key="type">{{ type }}</option>
+                  <option v-for="type in editableTicketTypes" :key="type" :value="type">{{ type }}</option>
                 </select>
               </label>
               <label>
@@ -298,7 +305,7 @@
               <label>
                 状态
                 <select v-model="ticketForm.status">
-                  <option v-for="status in editableStatuses" :key="status">{{ status }}</option>
+                  <option v-for="status in editableStatuses" :key="status" :value="status">{{ status }}</option>
                 </select>
               </label>
               <label>
@@ -311,7 +318,7 @@
             </div>
             <div class="dialog-actions">
               <button type="button" class="ghost-action" @click="showTicketForm = false">取消</button>
-              <button class="primary-action" type="submit">保存</button>
+              <button class="primary-action" type="submit" :disabled="loading">保存</button>
             </div>
           </form>
         </dialog>

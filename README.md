@@ -49,6 +49,14 @@ npm run preview
 admin@travel.local / admin123
 ```
 
+前端默认连接后端：
+
+```text
+http://127.0.0.1:8080
+```
+
+注册、登录、车票管理、审批、风险列表和 ES 重建索引都通过后端 API 完成，不再使用浏览器本地数据作为业务主存储。
+
 ## 后端运行
 
 进入后端目录：
@@ -121,6 +129,21 @@ curl "http://localhost:8080/api/v1/search/tickets?q=北京&page=0&size=20" `
 ```powershell
 curl -X POST "http://localhost:8080/api/v1/search/tickets/reindex" `
   -H "X-Tenant-Id: 10001"
+```
+
+## 前后端联动与数据写入
+
+- PostgreSQL：用户、车票主数据通过 Flyway 建表并持久化。
+- Redis：后端保留 Spring Cache，同时在车票新增、更新、审批、删除后维护热点快照。
+- Elasticsearch：车票新增、更新、审批后写入 `travel-ticket-v1`；删除车票时同步删除对应索引文档。
+- 前端：登录成功后保存会话中的 `tenantId`，后续请求统一带 `X-Tenant-Id` 请求头。
+
+常用 Redis key：
+
+```text
+travel-ticket:user:{userId}
+travel-ticket:ticket:{tenantId}:{ticketId}
+travel-ticket:tenant:{tenantId}:tickets
 ```
 
 ## 容量假设

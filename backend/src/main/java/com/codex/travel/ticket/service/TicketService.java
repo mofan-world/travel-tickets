@@ -11,6 +11,7 @@ import com.codex.travel.ticket.dto.CreateTicketRequest;
 import com.codex.travel.ticket.dto.DashboardSummaryResponse;
 import com.codex.travel.ticket.dto.RiskEventResponse;
 import com.codex.travel.ticket.dto.TicketResponse;
+import com.codex.travel.ticket.dto.UpdateTicketRequest;
 import com.codex.travel.ticket.entity.TravelTicket;
 import com.codex.travel.ticket.enums.RiskLevel;
 import com.codex.travel.ticket.enums.TicketStatus;
@@ -19,15 +20,17 @@ import com.codex.travel.ticket.repository.TravelTicketSearchRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -37,10 +40,15 @@ public class TicketService {
 
     private final TravelTicketRepository ticketRepository;
     private final ObjectProvider<TravelTicketSearchRepository> searchRepository;
+    private final RedisSnapshotService redisSnapshotService;
 
-    public TicketService(TravelTicketRepository ticketRepository, ObjectProvider<TravelTicketSearchRepository> searchRepository) {
+    public TicketService(
+            TravelTicketRepository ticketRepository,
+            ObjectProvider<TravelTicketSearchRepository> searchRepository,
+            RedisSnapshotService redisSnapshotService) {
         this.ticketRepository = ticketRepository;
         this.searchRepository = searchRepository;
+        this.redisSnapshotService = redisSnapshotService;
     }
 
     @Transactional
@@ -56,23 +64,11 @@ public class TicketService {
 
         TravelTicket ticket = new TravelTicket();
         ticket.setTenantId(tenantId);
-        ticket.setEmployeeId(request.employeeId());
-        ticket.setTicketNo(request.ticketNo());
-        ticket.setExternalSource(request.externalSource());
-        ticket.setExternalTicketId(request.externalTicketId());
-        ticket.setTravelType(StringUtils.hasText(request.travelType()) ? request.travelType().toUpperCase(Locale.ROOT) : "TRAIN");
-        ticket.setDepartureCity(request.departureCity());
-        ticket.setArrivalCity(request.arrivalCity());
-        ticket.setCarrierNo(request.carrierNo());
-        ticket.setSeatClass(request.seatClass());
-        ticket.setDepartAt(request.departAt());
-        ticket.setArriveAt(request.arriveAt());
-        ticket.setAmount(request.amount());
-        ticket.setCurrency(StringUtils.hasText(request.currency()) ? request.currency() : "CNY");
-        ticket.setRiskLevel(evaluateRisk(request));
+        applyCreateRequest(ticket, request);
+        ticket.setRiskLevel(evaluateRisk(ticket));
 
         TravelTicket saved = ticketRepository.save(ticket);
-        index(saved);
+        syncAfterCommit(saved);
         return TicketResponse.from(saved);
     }
 
@@ -107,22 +103,59 @@ public class TicketService {
             @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
             @CacheEvict(cacheNames = "riskEvents", key = "#p0")
     })
+    public TicketResponse update(Long tenantId, Long ticketId, UpdateTicketRequest request) {
+        TravelTicket ticket = loadTicket(tenantId, ticketId);
+        if (ticketRepository.existsByTenantIdAndTicketNoAndIdNot(tenantId, request.ticketNo(), ticketId)) {
+            throw new IllegalArgumentException("ticketNo already exists in current tenant");
+        }
+
+        applyUpdateRequest(ticket, request);
+        ticket.setRiskLevel(evaluateRisk(ticket));
+        TravelTicket saved = ticketRepository.save(ticket);
+        syncAfterCommit(saved);
+        return TicketResponse.from(saved);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "tickets", allEntries = true),
+            @CacheEvict(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1"),
+            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
+            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
+    })
+    public void delete(Long tenantId, Long ticketId) {
+        TravelTicket ticket = loadTicket(tenantId, ticketId);
+        ticketRepository.delete(ticket);
+        deleteAfterCommit(tenantId, ticketId);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "tickets", allEntries = true),
+            @CacheEvict(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1"),
+            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
+            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
+    })
     public TicketResponse applyApprovalAction(Long tenantId, Long ticketId, ApprovalActionRequest request) {
         TravelTicket ticket = loadTicket(tenantId, ticketId);
         TicketStatus nextStatus = switch (request.action().toLowerCase(Locale.ROOT)) {
             case "approve" -> TicketStatus.APPROVED;
             case "reject" -> TicketStatus.REJECTED;
             case "return" -> TicketStatus.MISSING_ATTACHMENT;
+            case "reimburse" -> TicketStatus.REIMBURSED;
+            case "exception" -> TicketStatus.EXCEPTION;
             default -> throw new IllegalArgumentException("unsupported approval action: " + request.action());
         };
 
         ticket.setStatus(nextStatus);
-        if (nextStatus == TicketStatus.APPROVED) {
+        if (nextStatus == TicketStatus.APPROVED || nextStatus == TicketStatus.REIMBURSED) {
             ticket.setRiskLevel(RiskLevel.NONE);
+        } else {
+            ticket.setRiskLevel(evaluateRisk(ticket));
         }
 
         TravelTicket saved = ticketRepository.save(ticket);
-        index(saved);
+        syncAfterCommit(saved);
         return TicketResponse.from(saved);
     }
 
@@ -134,9 +167,12 @@ public class TicketService {
                 .map(ticket -> new RiskEventResponse(
                         ticket.getId(),
                         ticket.getTicketNo(),
+                        ticket.getEmployeeName(),
+                        ticket.getDepartment(),
                         ticket.getDepartureCity() + " -> " + ticket.getArrivalCity(),
                         ticket.getCarrierNo(),
                         ticket.getRiskLevel(),
+                        ticket.getAttachmentStatus(),
                         riskMessage(ticket),
                         ticket.getCreatedAt()))
                 .toList();
@@ -147,7 +183,9 @@ public class TicketService {
     public DashboardSummaryResponse dashboardSummary(Long tenantId) {
         long total = ticketRepository.countByTenantId(tenantId);
         long riskCount = ticketRepository.countByTenantIdAndRiskLevelNot(tenantId, RiskLevel.NONE);
-        BigDecimal pendingAmount = ticketRepository.sumAmountByTenantIdAndStatus(tenantId, TicketStatus.PENDING_REVIEW);
+        BigDecimal pendingAmount = ticketRepository.sumAmountByTenantIdAndStatusIn(
+                tenantId,
+                List.of(TicketStatus.PENDING_REVIEW, TicketStatus.MISSING_ATTACHMENT, TicketStatus.EXCEPTION));
         double riskRate = total == 0 ? 0 : (double) riskCount / total;
         return new DashboardSummaryResponse(total, pendingAmount, riskRate, 18.6);
     }
@@ -180,14 +218,74 @@ public class TicketService {
                 .orElseThrow(() -> new IllegalArgumentException("ticket not found"));
     }
 
-    private RiskLevel evaluateRisk(CreateTicketRequest request) {
-        if (request.amount().compareTo(new BigDecimal("1000")) >= 0) {
+    private void applyCreateRequest(TravelTicket ticket, CreateTicketRequest request) {
+        ticket.setEmployeeId(request.employeeId());
+        ticket.setEmployeeName(request.employeeName().trim());
+        ticket.setDepartment(request.department().trim());
+        ticket.setTicketNo(request.ticketNo().trim());
+        ticket.setExternalSource(request.externalSource());
+        ticket.setExternalTicketId(request.externalTicketId());
+        ticket.setTravelType(normalizeTravelType(request.travelType()));
+        ticket.setDepartureCity(request.departureCity().trim());
+        ticket.setArrivalCity(request.arrivalCity().trim());
+        ticket.setCarrierNo(request.carrierNo().trim());
+        ticket.setSeatClass(request.seatClass());
+        ticket.setTripPurpose(request.tripPurpose().trim());
+        ticket.setAttachmentStatus(normalizeAttachmentStatus(request.attachmentStatus()));
+        ticket.setDepartAt(request.departAt());
+        ticket.setArriveAt(request.arriveAt());
+        ticket.setAmount(request.amount());
+        ticket.setCurrency(StringUtils.hasText(request.currency()) ? request.currency() : "CNY");
+        ticket.setStatus(request.status() == null ? TicketStatus.PENDING_REVIEW : request.status());
+    }
+
+    private void applyUpdateRequest(TravelTicket ticket, UpdateTicketRequest request) {
+        ticket.setEmployeeId(request.employeeId());
+        ticket.setEmployeeName(request.employeeName().trim());
+        ticket.setDepartment(request.department().trim());
+        ticket.setTicketNo(request.ticketNo().trim());
+        ticket.setExternalSource(request.externalSource());
+        ticket.setExternalTicketId(request.externalTicketId());
+        ticket.setTravelType(normalizeTravelType(request.travelType()));
+        ticket.setDepartureCity(request.departureCity().trim());
+        ticket.setArrivalCity(request.arrivalCity().trim());
+        ticket.setCarrierNo(request.carrierNo().trim());
+        ticket.setSeatClass(request.seatClass());
+        ticket.setTripPurpose(request.tripPurpose().trim());
+        ticket.setAttachmentStatus(normalizeAttachmentStatus(request.attachmentStatus()));
+        ticket.setDepartAt(request.departAt());
+        ticket.setArriveAt(request.arriveAt());
+        ticket.setAmount(request.amount());
+        ticket.setCurrency(StringUtils.hasText(request.currency()) ? request.currency() : "CNY");
+        ticket.setStatus(request.status() == null ? ticket.getStatus() : request.status());
+    }
+
+    private RiskLevel evaluateRisk(TravelTicket ticket) {
+        if ("MISSING".equals(ticket.getAttachmentStatus())) {
+            return RiskLevel.MEDIUM;
+        }
+        if (ticket.getAmount().compareTo(new BigDecimal("1000")) >= 0) {
             return RiskLevel.HIGH;
         }
-        if (request.departAt() == null) {
+        if (ticket.getDepartAt() == null) {
             return RiskLevel.MEDIUM;
         }
         return RiskLevel.NONE;
+    }
+
+    private String normalizeTravelType(String travelType) {
+        return StringUtils.hasText(travelType) ? travelType.toUpperCase(Locale.ROOT) : "TRAIN";
+    }
+
+    private String normalizeAttachmentStatus(String attachmentStatus) {
+        if (!StringUtils.hasText(attachmentStatus)) {
+            return "UPLOADED";
+        }
+        String normalized = attachmentStatus.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "MISSING", "UPLOADED" -> normalized;
+            default -> "UPLOADED";
+        };
     }
 
     private String riskMessage(TravelTicket ticket) {
@@ -197,6 +295,33 @@ public class TicketService {
             case LOW -> "minor policy warning";
             case NONE -> "no risk";
         };
+    }
+
+    private void syncAfterCommit(TravelTicket ticket) {
+        afterCommit(() -> {
+            redisSnapshotService.writeTicket(ticket);
+            index(ticket);
+        });
+    }
+
+    private void deleteAfterCommit(Long tenantId, Long ticketId) {
+        afterCommit(() -> {
+            redisSnapshotService.deleteTicket(tenantId, ticketId);
+            deleteIndex(tenantId, ticketId);
+        });
+    }
+
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+        action.run();
     }
 
     private void index(TravelTicket ticket) {
@@ -209,6 +334,18 @@ public class TicketService {
             repository.save(TravelTicketDocument.from(ticket));
         } catch (Exception ex) {
             log.warn("failed to index ticket {} for tenant {}", ticket.getId(), ticket.getTenantId(), ex);
+        }
+    }
+
+    private void deleteIndex(Long tenantId, Long ticketId) {
+        TravelTicketSearchRepository repository = searchRepository.getIfAvailable();
+        if (repository == null) {
+            return;
+        }
+        try {
+            repository.deleteById(tenantId + ":" + ticketId);
+        } catch (Exception ex) {
+            log.warn("failed to delete ticket {} from Elasticsearch for tenant {}", ticketId, tenantId, ex);
         }
     }
 }

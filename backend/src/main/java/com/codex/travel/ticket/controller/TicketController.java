@@ -4,6 +4,7 @@ import com.codex.travel.ticket.common.ApiResponse;
 import com.codex.travel.ticket.common.PageResult;
 import com.codex.travel.ticket.dto.CreateTicketRequest;
 import com.codex.travel.ticket.dto.TicketResponse;
+import com.codex.travel.ticket.dto.UpdateTicketRequest;
 import com.codex.travel.ticket.enums.TicketStatus;
 import com.codex.travel.ticket.service.TicketService;
 
@@ -11,9 +12,11 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,5 +56,21 @@ public class TicketController {
             @RequestHeader("X-Tenant-Id") Long tenantId,
             @PathVariable(name = "ticketId") Long ticketId) {
         return ApiResponse.ok(ticketService.get(tenantId, ticketId));
+    }
+
+    @PutMapping("/{ticketId}")
+    public ApiResponse<TicketResponse> update(
+            @RequestHeader("X-Tenant-Id") Long tenantId,
+            @PathVariable(name = "ticketId") Long ticketId,
+            @Valid @RequestBody UpdateTicketRequest request) {
+        return ApiResponse.ok(ticketService.update(tenantId, ticketId, request));
+    }
+
+    @DeleteMapping("/{ticketId}")
+    public ResponseEntity<ApiResponse<Void>> delete(
+            @RequestHeader("X-Tenant-Id") Long tenantId,
+            @PathVariable(name = "ticketId") Long ticketId) {
+        ticketService.delete(tenantId, ticketId);
+        return ResponseEntity.ok(ApiResponse.ok(null));
     }
 }

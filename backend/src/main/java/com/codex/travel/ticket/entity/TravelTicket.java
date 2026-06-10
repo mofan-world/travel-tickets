@@ -32,6 +32,12 @@ public class TravelTicket {
     @Column(name = "employee_id", nullable = false)
     private Long employeeId;
 
+    @Column(name = "employee_name", nullable = false, length = 80)
+    private String employeeName;
+
+    @Column(name = "department", nullable = false, length = 120)
+    private String department;
+
     @Column(name = "ticket_no", nullable = false, length = 96)
     private String ticketNo;
 
@@ -55,6 +61,12 @@ public class TravelTicket {
 
     @Column(name = "seat_class", length = 64)
     private String seatClass;
+
+    @Column(name = "trip_purpose", nullable = false, length = 240)
+    private String tripPurpose;
+
+    @Column(name = "attachment_status", nullable = false, length = 32)
+    private String attachmentStatus = "UPLOADED";
 
     @Column(name = "depart_at")
     private Instant departAt;
@@ -116,6 +128,22 @@ public class TravelTicket {
 
     public void setEmployeeId(Long employeeId) {
         this.employeeId = employeeId;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public void setEmployeeName(String employeeName) {
+        this.employeeName = employeeName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
     }
 
     public String getTicketNo() {
@@ -180,6 +208,22 @@ public class TravelTicket {
 
     public void setSeatClass(String seatClass) {
         this.seatClass = seatClass;
+    }
+
+    public String getTripPurpose() {
+        return tripPurpose;
+    }
+
+    public void setTripPurpose(String tripPurpose) {
+        this.tripPurpose = tripPurpose;
+    }
+
+    public String getAttachmentStatus() {
+        return attachmentStatus;
+    }
+
+    public void setAttachmentStatus(String attachmentStatus) {
+        this.attachmentStatus = attachmentStatus;
     }
 
     public Instant getDepartAt() {
