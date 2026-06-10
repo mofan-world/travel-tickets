@@ -21,8 +21,6 @@ import com.codex.travel.ticket.repository.TravelTicketSearchRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -51,11 +49,6 @@ public class TicketService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "tickets", allEntries = true),
-            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
-            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
-    })
     public TicketResponse create(Long tenantId, CreateTicketRequest request) {
         if (ticketRepository.existsByTenantIdAndTicketNo(tenantId, request.ticketNo())) {
             throw new IllegalArgumentException("ticketNo already exists in current tenant");
@@ -78,28 +71,31 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public PageResult<TicketResponse> list(Long tenantId, TicketStatus status, int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.min(Math.max(size, 1), 200);
+        return redisSnapshotService.readTicketPage(tenantId, status, normalizedPage, normalizedSize)
+                .orElseGet(() -> loadTicketPage(tenantId, status, normalizedPage, normalizedSize));
+    }
+
+    private PageResult<TicketResponse> loadTicketPage(Long tenantId, TicketStatus status, int page, int size) {
         PageRequest pageRequest = PageRequest.of(
-                Math.max(page, 0),
-                Math.min(Math.max(size, 1), 200),
+                page,
+                size,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<TravelTicket> tickets = status == null
                 ? ticketRepository.findByTenantId(tenantId, pageRequest)
                 : ticketRepository.findByTenantIdAndStatus(tenantId, status, pageRequest);
 
-        return new PageResult<>(
+        PageResult<TicketResponse> result = new PageResult<>(
                 tickets.getContent().stream().map(TicketResponse::from).toList(),
                 tickets.getNumber(),
                 tickets.getSize(),
                 tickets.getTotalElements());
+        redisSnapshotService.writeTicketPage(tenantId, status, page, size, result);
+        return result;
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "tickets", allEntries = true),
-            @CacheEvict(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1"),
-            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
-            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
-    })
     public TicketResponse update(Long tenantId, Long ticketId, UpdateTicketRequest request) {
         TravelTicket ticket = loadTicket(tenantId, ticketId);
         if (ticketRepository.existsByTenantIdAndTicketNoAndIdNot(tenantId, request.ticketNo(), ticketId)) {
@@ -114,12 +110,6 @@ public class TicketService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "tickets", allEntries = true),
-            @CacheEvict(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1"),
-            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
-            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
-    })
     public void delete(Long tenantId, Long ticketId) {
         TravelTicket ticket = loadTicket(tenantId, ticketId);
         ticketRepository.delete(ticket);
@@ -127,12 +117,6 @@ public class TicketService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "tickets", allEntries = true),
-            @CacheEvict(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1"),
-            @CacheEvict(cacheNames = "dashboardSummary", key = "#p0"),
-            @CacheEvict(cacheNames = "riskEvents", key = "#p0")
-    })
     public TicketResponse applyApprovalAction(Long tenantId, Long ticketId, ApprovalActionRequest request) {
         TravelTicket ticket = loadTicket(tenantId, ticketId);
         TicketStatus nextStatus = switch (request.action().toLowerCase(Locale.ROOT)) {
@@ -158,7 +142,12 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public java.util.List<RiskEventResponse> listRiskEvents(Long tenantId) {
-        return ticketRepository.findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(tenantId, RiskLevel.NONE)
+        return redisSnapshotService.readRiskEvents(tenantId)
+                .orElseGet(() -> loadRiskEvents(tenantId));
+    }
+
+    private java.util.List<RiskEventResponse> loadRiskEvents(Long tenantId) {
+        java.util.List<RiskEventResponse> result = ticketRepository.findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(tenantId, RiskLevel.NONE)
                 .stream()
                 .map(ticket -> new RiskEventResponse(
                         ticket.getId(),
@@ -172,17 +161,26 @@ public class TicketService {
                         riskMessage(ticket),
                         ticket.getCreatedAt()))
                 .toList();
+        redisSnapshotService.writeRiskEvents(tenantId, result);
+        return result;
     }
 
     @Transactional(readOnly = true)
     public DashboardSummaryResponse dashboardSummary(Long tenantId) {
+        return redisSnapshotService.readDashboardSummary(tenantId)
+                .orElseGet(() -> loadDashboardSummary(tenantId));
+    }
+
+    private DashboardSummaryResponse loadDashboardSummary(Long tenantId) {
         long total = ticketRepository.countByTenantId(tenantId);
         long riskCount = ticketRepository.countByTenantIdAndRiskLevelNot(tenantId, RiskLevel.NONE);
         BigDecimal pendingAmount = ticketRepository.sumAmountByTenantIdAndStatusIn(
                 tenantId,
                 List.of(TicketStatus.PENDING_REVIEW, TicketStatus.MISSING_ATTACHMENT, TicketStatus.EXCEPTION));
         double riskRate = total == 0 ? 0 : (double) riskCount / total;
-        return new DashboardSummaryResponse(total, pendingAmount, riskRate, 18.6);
+        DashboardSummaryResponse result = new DashboardSummaryResponse(total, pendingAmount, riskRate, 18.6);
+        redisSnapshotService.writeDashboardSummary(tenantId, result);
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -294,6 +292,7 @@ public class TicketService {
 
     private void syncAfterCommit(TravelTicket ticket) {
         afterCommit(() -> {
+            redisSnapshotService.bumpTenantVersion(ticket.getTenantId());
             redisSnapshotService.writeTicket(ticket);
             index(ticket);
         });
@@ -301,6 +300,7 @@ public class TicketService {
 
     private void deleteAfterCommit(Long tenantId, Long ticketId) {
         afterCommit(() -> {
+            redisSnapshotService.bumpTenantVersion(tenantId);
             redisSnapshotService.deleteTicket(tenantId, ticketId);
             deleteIndex(tenantId, ticketId);
         });
