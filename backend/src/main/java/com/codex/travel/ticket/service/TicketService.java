@@ -187,11 +187,14 @@ public class TicketService {
     private DashboardSummaryResponse loadDashboardSummary(Long tenantId) {
         long total = ticketRepository.countByTenantId(tenantId);
         long riskCount = ticketRepository.countByTenantIdAndRiskLevelNot(tenantId, RiskLevel.NONE);
+        long approvedCount = ticketRepository.countByTenantIdAndStatusIn(
+                tenantId,
+                List.of(TicketStatus.APPROVED, TicketStatus.REIMBURSED));
         BigDecimal pendingAmount = ticketRepository.sumAmountByTenantIdAndStatusIn(
                 tenantId,
                 List.of(TicketStatus.PENDING_REVIEW, TicketStatus.MISSING_ATTACHMENT, TicketStatus.EXCEPTION));
         double riskRate = total == 0 ? 0 : (double) riskCount / total;
-        DashboardSummaryResponse result = new DashboardSummaryResponse(total, pendingAmount, riskRate, 18.6);
+        DashboardSummaryResponse result = new DashboardSummaryResponse(total, pendingAmount, riskRate, approvedCount, 18.6);
         redisSnapshotService.writeDashboardSummary(tenantId, result);
         return result;
     }

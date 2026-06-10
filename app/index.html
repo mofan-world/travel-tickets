@@ -71,10 +71,10 @@
             </div>
           </div>
           <nav>
-            <a href="#dashboard">总览</a>
-            <a href="#tickets">车票</a>
-            <a href="#approvals">审批</a>
-            <a href="#risk">风控</a>
+            <button :class="{ active: activeSection === 'dashboard' }" @click="switchSection('dashboard')">总览</button>
+            <button :class="{ active: activeSection === 'tickets' }" @click="switchSection('tickets')">车票</button>
+            <button :class="{ active: activeSection === 'approvals' }" @click="switchSection('approvals')">审批</button>
+            <button :class="{ active: activeSection === 'risk' }" @click="switchSection('risk')">风控</button>
           </nav>
           <div class="user-box">
             <strong>{{ currentUser.name }}</strong>
@@ -87,8 +87,8 @@
           <header class="topbar">
             <div>
               <p class="eyebrow">运营控制台</p>
-              <h1>出差车票归集、审批与核销</h1>
-              <p class="hint">租户：{{ currentUser.tenantId }} · 数据来自 PostgreSQL，热点快照写入 Redis，搜索索引写入 Elasticsearch</p>
+              <h1>{{ sectionTitle }}</h1>
+              <p class="hint">{{ sectionHint }}</p>
             </div>
             <div class="topbar-actions">
               <button class="ghost-action" @click="reloadData" :disabled="loading">刷新</button>
@@ -99,7 +99,7 @@
             </div>
           </header>
 
-          <section id="dashboard" class="metric-grid">
+          <section v-if="isDashboard" id="dashboard" class="metric-grid">
             <article class="metric">
               <span>车票总数</span>
               <strong>{{ metrics.total }}</strong>
@@ -122,7 +122,7 @@
             </article>
           </section>
 
-          <section class="filters" aria-label="车票筛选">
+          <section v-if="showTicketModule" class="filters" aria-label="车票筛选">
             <label>
               搜索
               <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="resetTicketPageAndReload" />
@@ -147,8 +147,8 @@
             </label>
           </section>
 
-          <section class="content-grid">
-            <article id="tickets" class="panel ticket-panel">
+          <section class="content-grid" :class="{ 'single-module': !isDashboard }">
+            <article v-if="showTicketModule" id="tickets" class="panel ticket-panel">
               <div class="panel-head">
                 <div>
                   <p class="eyebrow">车票池</p>
@@ -213,7 +213,7 @@
               </div>
             </article>
 
-            <article id="approvals" class="panel">
+            <article v-if="showApprovalModule" id="approvals" class="panel">
               <div class="panel-head">
                 <div>
                   <p class="eyebrow">审批队列</p>
@@ -253,7 +253,7 @@
               </div>
             </article>
 
-            <article id="risk" class="panel">
+            <article v-if="showRiskModule" id="risk" class="panel">
               <div class="panel-head">
                 <div>
                   <p class="eyebrow">风险预警</p>

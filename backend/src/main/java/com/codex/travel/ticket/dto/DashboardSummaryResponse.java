@@ -6,6 +6,7 @@ public record DashboardSummaryResponse(
         long ticketCount,
         BigDecimal pendingAmount,
         double riskRate,
+        long approvedCount,
         double averageProcessHours
 ) {
 }

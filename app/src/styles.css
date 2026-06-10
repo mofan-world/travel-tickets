@@ -198,17 +198,25 @@ label {
   margin-top: 34px;
 }
 
-.sidebar a {
+.sidebar nav button {
   min-height: 42px;
   padding: 12px;
   color: rgba(255, 255, 255, 0.78);
-  text-decoration: none;
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-radius: 8px;
+  font-weight: 800;
 }
 
-.sidebar a:hover {
+.sidebar nav button:hover,
+.sidebar nav button.active {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar nav button.active {
+  box-shadow: inset 3px 0 0 #5ee0d2;
 }
 
 .user-box {
@@ -339,8 +347,16 @@ label {
   margin-top: 16px;
 }
 
+.content-grid.single-module {
+  grid-template-columns: 1fr;
+}
+
 .ticket-panel {
   grid-row: span 2;
+}
+
+.content-grid.single-module .ticket-panel {
+  grid-row: auto;
 }
 
 .panel {
@@ -763,12 +779,12 @@ td.row-actions button + button {
   }
 
   .brand div,
-  .sidebar nav a,
+  .sidebar nav button,
   .user-box {
     font-size: 0;
   }
 
-  .sidebar nav a::first-letter,
+  .sidebar nav button::first-letter,
   .user-box strong::first-letter {
     font-size: 16px;
   }
@@ -777,6 +793,10 @@ td.row-actions button + button {
   .filters,
   .content-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .content-grid.single-module {
+    grid-template-columns: 1fr;
   }
 }
 

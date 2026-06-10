@@ -159,7 +159,7 @@ public class RedisSnapshotService {
     }
 
     private String dashboardSummaryKey(Long tenantId) {
-        return "travel-ticket:read:v1:dashboard-summary:" + tenantId + ":" + tenantVersion(tenantId);
+        return "travel-ticket:read:v2:dashboard-summary:" + tenantId + ":" + tenantVersion(tenantId);
     }
 
     private String tenantVersion(Long tenantId) {

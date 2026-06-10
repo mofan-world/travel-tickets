@@ -31,6 +31,8 @@ public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long
 
     long countByTenantIdAndRiskLevelNot(Long tenantId, RiskLevel riskLevel);
 
+    long countByTenantIdAndStatusIn(Long tenantId, Collection<TicketStatus> statuses);
+
     Page<TravelTicket> findByTenantIdAndRiskLevelNot(Long tenantId, RiskLevel riskLevel, Pageable pageable);
 
     List<TravelTicket> findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(Long tenantId, RiskLevel riskLevel);

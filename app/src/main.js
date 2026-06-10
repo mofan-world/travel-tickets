@@ -236,6 +236,7 @@ createApp({
   setup() {
     const authMode = ref("login");
     const currentUser = ref(readJson(SESSION_KEY, null));
+    const activeSection = ref("dashboard");
     const toast = ref("");
     const editingId = ref("");
     const showTicketForm = ref(false);
@@ -294,6 +295,22 @@ createApp({
     const ticketTypes = ["全部", "高铁", "动车", "普铁", "城际", "飞机", "其他"];
     const editableStatuses = computed(() => statuses.filter((status) => status !== "全部"));
     const editableTicketTypes = computed(() => ticketTypes.filter((type) => type !== "全部"));
+    const isDashboard = computed(() => activeSection.value === "dashboard");
+    const showTicketModule = computed(() => isDashboard.value || activeSection.value === "tickets");
+    const showApprovalModule = computed(() => isDashboard.value || activeSection.value === "approvals");
+    const showRiskModule = computed(() => isDashboard.value || activeSection.value === "risk");
+    const sectionTitle = computed(() => ({
+      dashboard: "出差车票归集、审批与核销",
+      tickets: "车票记录管理",
+      approvals: "待审批车票处理",
+      risk: "风险预警复核",
+    }[activeSection.value]));
+    const sectionHint = computed(() => ({
+      dashboard: `租户：${currentUser.value?.tenantId} · 数据来自 PostgreSQL，热点快照写入 Redis，搜索索引写入 Elasticsearch`,
+      tickets: "分页查看、筛选、编辑和删除车票记录",
+      approvals: "按待审批状态分页处理车票审批动作",
+      risk: "按风险等级分页查看需要复核的车票",
+    }[activeSection.value]));
 
     const cities = computed(() => {
       const values = new Set(["全部"]);
@@ -530,8 +547,14 @@ createApp({
     function logout() {
       currentUser.value = null;
       localStorage.removeItem(SESSION_KEY);
+      activeSection.value = "dashboard";
       tickets.value = [];
+      pendingTickets.value = [];
       riskEvents.value = [];
+    }
+
+    function switchSection(section) {
+      activeSection.value = section;
     }
 
     async function reloadData() {
@@ -553,7 +576,7 @@ createApp({
         metrics.total = summary?.ticketCount || 0;
         metrics.pendingAmount = Number(summary?.pendingAmount || 0);
         metrics.riskRate = Math.round(Number(summary?.riskRate || 0) * 100);
-        metrics.approved = tickets.value.filter((ticket) => ["已通过", "已核销"].includes(ticket.status)).length;
+        metrics.approved = Number(summary?.approvedCount || 0);
       }).catch((error) => showMessage(error.message));
     }
 
@@ -709,6 +732,7 @@ createApp({
 
     return {
       apiBase,
+      activeSection,
       authMode,
       currentUser,
       cancelDelete,
@@ -723,6 +747,7 @@ createApp({
       goPendingPage,
       goRiskPage,
       goTicketPage,
+      isDashboard,
       login,
       loginForm,
       loading,
@@ -749,8 +774,14 @@ createApp({
       riskTickets,
       saveTicket,
       seedDemoData,
+      sectionHint,
+      sectionTitle,
+      showApprovalModule,
+      showRiskModule,
       showTicketForm,
+      showTicketModule,
       statuses,
+      switchSection,
       ticketForm,
       ticketPageCount,
       ticketPager,
