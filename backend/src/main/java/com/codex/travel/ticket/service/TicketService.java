@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -73,13 +72,11 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "ticketDetail", key = "#p0 + ':' + #p1")
     public TicketResponse get(Long tenantId, Long ticketId) {
         return TicketResponse.from(loadTicket(tenantId, ticketId));
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "tickets", key = "#p0 + ':' + (#p1 == null ? 'ALL' : #p1.name()) + ':' + #p2 + ':' + #p3")
     public PageResult<TicketResponse> list(Long tenantId, TicketStatus status, int page, int size) {
         PageRequest pageRequest = PageRequest.of(
                 Math.max(page, 0),
@@ -160,7 +157,6 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "riskEvents", key = "#p0")
     public java.util.List<RiskEventResponse> listRiskEvents(Long tenantId) {
         return ticketRepository.findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(tenantId, RiskLevel.NONE)
                 .stream()
@@ -179,7 +175,6 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "dashboardSummary", key = "#p0")
     public DashboardSummaryResponse dashboardSummary(Long tenantId) {
         long total = ticketRepository.countByTenantId(tenantId);
         long riskCount = ticketRepository.countByTenantIdAndRiskLevelNot(tenantId, RiskLevel.NONE);

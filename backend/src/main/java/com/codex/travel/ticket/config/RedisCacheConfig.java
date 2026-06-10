@@ -2,8 +2,10 @@ package com.codex.travel.ticket.config;
 
 import java.time.Duration;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import org.springframework.cache.CacheManager;
@@ -23,8 +25,18 @@ public class RedisCacheConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper.activateDefaultTypingAsProperty(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType("com.codex.travel.ticket")
+                        .allowIfSubType("java.math")
+                        .allowIfSubType("java.time")
+                        .allowIfSubType("java.util")
+                        .build(),
+                ObjectMapper.DefaultTyping.EVERYTHING,
+                JsonTypeInfo.Id.CLASS.getDefaultPropertyName());
 
         RedisCacheConfiguration defaults = RedisCacheConfiguration.defaultCacheConfig()
+                .computePrefixWith(cacheName -> "travel-ticket:cache:v2:" + cacheName + "::")
                 .entryTtl(Duration.ofMinutes(5))
                 .disableCachingNullValues()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
