@@ -125,11 +125,11 @@
           <section class="filters" aria-label="车票筛选">
             <label>
               搜索
-              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="reloadData" />
+              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="resetTicketPageAndReload" />
             </label>
             <label>
               状态
-              <select v-model="filters.status" @change="reloadData">
+              <select v-model="filters.status" @change="resetTicketPageAndReload">
                 <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
               </select>
             </label>
@@ -154,7 +154,7 @@
                   <p class="eyebrow">车票池</p>
                   <h2>车票记录</h2>
                 </div>
-                <span>{{ filteredTickets.length }} 条</span>
+                <span>{{ ticketRangeText }} / 共 {{ ticketPager.total }} 条</span>
               </div>
               <div class="table-wrap">
                 <table>
@@ -194,6 +194,23 @@
                   </tbody>
                 </table>
               </div>
+              <div class="pager">
+                <p>本页筛选 {{ filteredTickets.length }} 条 · 第 {{ ticketPager.page + 1 }} / {{ ticketPageCount }} 页</p>
+                <div class="pager-controls">
+                  <label>
+                    每页
+                    <select v-model.number="ticketPager.size" @change="resetTicketPageAndReload">
+                      <option :value="20">20</option>
+                      <option :value="50">50</option>
+                      <option :value="100">100</option>
+                    </select>
+                  </label>
+                  <button type="button" @click="goTicketPage(0)" :disabled="loading || ticketPager.page === 0">首页</button>
+                  <button type="button" @click="goTicketPage(ticketPager.page - 1)" :disabled="loading || ticketPager.page === 0">上一页</button>
+                  <button type="button" @click="goTicketPage(ticketPager.page + 1)" :disabled="loading || ticketPager.page + 1 >= ticketPageCount">下一页</button>
+                  <button type="button" @click="goTicketPage(ticketPageCount - 1)" :disabled="loading || ticketPager.page + 1 >= ticketPageCount">末页</button>
+                </div>
+              </div>
             </article>
 
             <article id="approvals" class="panel">
@@ -218,6 +235,21 @@
                   </div>
                 </section>
                 <p v-if="!pendingTickets.length" class="empty">暂无待审批车票</p>
+              </div>
+              <div class="pager compact-pager">
+                <p>{{ pendingRangeText }} / 共 {{ pendingPager.total }} 条 · 第 {{ pendingPager.page + 1 }} / {{ pendingPageCount }} 页</p>
+                <div class="pager-controls">
+                  <label>
+                    每页
+                    <select v-model.number="pendingPager.size" @change="resetPendingPageAndReload">
+                      <option :value="5">5</option>
+                      <option :value="10">10</option>
+                      <option :value="20">20</option>
+                    </select>
+                  </label>
+                  <button type="button" @click="goPendingPage(pendingPager.page - 1)" :disabled="loading || pendingPager.page === 0">上一页</button>
+                  <button type="button" @click="goPendingPage(pendingPager.page + 1)" :disabled="loading || pendingPager.page + 1 >= pendingPageCount">下一页</button>
+                </div>
               </div>
             </article>
 

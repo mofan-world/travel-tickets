@@ -219,6 +219,19 @@ function toPayload(form) {
   };
 }
 
+function pageCount(pager) {
+  return Math.max(1, Math.ceil(Number(pager.total || 0) / Number(pager.size || 1)));
+}
+
+function pageRange(pager, visibleCount) {
+  if (!pager.total || !visibleCount) {
+    return "0-0";
+  }
+  const start = pager.page * pager.size + 1;
+  const end = Math.min(pager.total, start + visibleCount - 1);
+  return `${start}-${end}`;
+}
+
 createApp({
   setup() {
     const authMode = ref("login");
@@ -229,6 +242,7 @@ createApp({
     const deleteTarget = ref(null);
     const loading = ref(false);
     const tickets = ref([]);
+    const pendingTickets = ref([]);
     const riskEvents = ref([]);
 
     const metrics = reactive({
@@ -255,6 +269,18 @@ createApp({
       status: "全部",
       city: "全部",
       ticketType: "全部",
+    });
+
+    const ticketPager = reactive({
+      page: 0,
+      size: 20,
+      total: 0,
+    });
+
+    const pendingPager = reactive({
+      page: 0,
+      size: 5,
+      total: 0,
     });
 
     const ticketForm = reactive(emptyTicketForm());
@@ -296,7 +322,11 @@ createApp({
       });
     });
 
-    const pendingTickets = computed(() => tickets.value.filter((ticket) => ticket.status === "待审批").slice(0, 5));
+    const ticketPageCount = computed(() => pageCount(ticketPager));
+    const pendingPageCount = computed(() => pageCount(pendingPager));
+    const ticketRangeText = computed(() => pageRange(ticketPager, tickets.value.length));
+    const pendingRangeText = computed(() => pageRange(pendingPager, pendingTickets.value.length));
+
     const riskTickets = computed(() => {
       if (riskEvents.value.length) {
         return riskEvents.value.map((event) => ({
@@ -352,6 +382,82 @@ createApp({
       }
     }
 
+    function applyPage(result, pager, target) {
+      target.value = (result?.items || []).map(mapTicket);
+      pager.page = Number(result?.page ?? pager.page);
+      pager.size = Number(result?.size ?? pager.size);
+      pager.total = Number(result?.total ?? 0);
+    }
+
+    async function fetchTicketRecords() {
+      const status = statusEnum[filters.status];
+      const query = new URLSearchParams({
+        page: String(ticketPager.page),
+        size: String(ticketPager.size),
+      });
+      if (status) {
+        query.set("status", status);
+      }
+
+      if (filters.query.trim()) {
+        const search = new URLSearchParams({
+          q: filters.query.trim(),
+          page: String(ticketPager.page),
+          size: String(ticketPager.size),
+        });
+        try {
+          return await api(`/api/v1/search/tickets?${search}`);
+        } catch {
+          showMessage("ES 搜索不可用，已回退到数据库分页列表");
+        }
+      }
+
+      return api(`/api/v1/tickets?${query}`);
+    }
+
+    async function fetchPendingApprovals() {
+      const query = new URLSearchParams({
+        status: "PENDING_REVIEW",
+        page: String(pendingPager.page),
+        size: String(pendingPager.size),
+      });
+      return api(`/api/v1/tickets?${query}`);
+    }
+
+    function resetTicketPageAndReload() {
+      ticketPager.page = 0;
+      reloadData();
+    }
+
+    function resetPendingPageAndReload() {
+      pendingPager.page = 0;
+      reloadPendingApprovals();
+    }
+
+    function goTicketPage(page) {
+      const nextPage = Math.min(Math.max(page, 0), ticketPageCount.value - 1);
+      if (nextPage === ticketPager.page) {
+        return;
+      }
+      ticketPager.page = nextPage;
+      reloadData();
+    }
+
+    function goPendingPage(page) {
+      const nextPage = Math.min(Math.max(page, 0), pendingPageCount.value - 1);
+      if (nextPage === pendingPager.page) {
+        return;
+      }
+      pendingPager.page = nextPage;
+      reloadPendingApprovals();
+    }
+
+    async function reloadPendingApprovals() {
+      await runWithLoading(async () => {
+        applyPage(await fetchPendingApprovals(), pendingPager, pendingTickets);
+      }).catch((error) => showMessage(error.message));
+    }
+
     async function login() {
       await runWithLoading(async () => {
         const user = await api("/api/v1/auth/login", {
@@ -393,31 +499,15 @@ createApp({
       }
 
       await runWithLoading(async () => {
-        const status = statusEnum[filters.status];
-        const query = new URLSearchParams({ page: "0", size: "100" });
-        if (status) {
-          query.set("status", status);
-        }
-
-        let listResult;
-        if (filters.query.trim()) {
-          const search = new URLSearchParams({ q: filters.query.trim(), page: "0", size: "100" });
-          try {
-            listResult = await api(`/api/v1/search/tickets?${search}`);
-          } catch {
-            listResult = await api(`/api/v1/tickets?${query}`);
-            showMessage("ES 搜索不可用，已回退到数据库列表");
-          }
-        } else {
-          listResult = await api(`/api/v1/tickets?${query}`);
-        }
-
-        const [summary, risks] = await Promise.all([
+        const [listResult, pendingResult, summary, risks] = await Promise.all([
+          fetchTicketRecords(),
+          fetchPendingApprovals(),
           api("/api/v1/reports/summary"),
           api("/api/v1/risk/events"),
         ]);
 
-        tickets.value = (listResult?.items || []).map(mapTicket);
+        applyPage(listResult, ticketPager, tickets);
+        applyPage(pendingResult, pendingPager, pendingTickets);
         riskEvents.value = risks || [];
         metrics.total = summary?.ticketCount || 0;
         metrics.pendingAmount = Number(summary?.pendingAmount || 0);
@@ -589,6 +679,8 @@ createApp({
       exportCsv,
       filters,
       filteredTickets,
+      goPendingPage,
+      goTicketPage,
       login,
       loginForm,
       loading,
@@ -596,11 +688,16 @@ createApp({
       metrics,
       money,
       openCreateForm,
+      pendingPageCount,
+      pendingPager,
+      pendingRangeText,
       pendingTickets,
       register,
       registerForm,
       reindexSearch,
       reloadData,
+      resetPendingPageAndReload,
+      resetTicketPageAndReload,
       removeTicket,
       riskTickets,
       saveTicket,
@@ -608,6 +705,9 @@ createApp({
       showTicketForm,
       statuses,
       ticketForm,
+      ticketPageCount,
+      ticketPager,
+      ticketRangeText,
       ticketTypes,
       toast,
       updateStatus,

@@ -460,6 +460,65 @@ td small {
   background: #fff7f5;
 }
 
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pager p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pager-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pager-controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+}
+
+.pager-controls select {
+  width: auto;
+  min-width: 76px;
+  min-height: 34px;
+}
+
+.pager-controls button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.pager-controls button:disabled {
+  cursor: not-allowed;
+  color: #9aa5aa;
+  background: #f4f7f8;
+}
+
+.compact-pager {
+  align-items: flex-start;
+}
+
 .stack-list {
   display: grid;
   gap: 10px;
@@ -747,5 +806,18 @@ td small {
   .confirm-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .pager,
+  .pager-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .pager-controls label,
+  .pager-controls button,
+  .pager-controls select {
+    width: 100%;
   }
 }
