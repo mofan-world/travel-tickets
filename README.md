@@ -84,6 +84,8 @@ docker compose up -d
 .\run-platform.cmd
 ```
 
+完整平台模式会先把 `backend/src/main/resources/nacos/travel-ticket-service.yaml` 发布到 Nacos，再启动后端；数据库、Redis、ES 等运行参数不再通过启动命令传入，而是由应用启动时从 Nacos 读取。
+
 健康检查：
 
 ```powershell
@@ -109,6 +111,13 @@ Nacos 配置样例：
 
 ```text
 backend/src/main/resources/nacos/travel-ticket-service.yaml
+```
+
+手动发布到本地 Nacos：
+
+```powershell
+cd backend
+.\publish-nacos-config.cmd
 ```
 
 ES 索引名：

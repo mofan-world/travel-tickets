@@ -1,31 +1,64 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/travel_ticket?sslmode=disable
-    username: travel_ticket
-    password: travel_ticket
+    url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:${POSTGRES_PORT:5432}/${POSTGRES_DB:travel_ticket}?sslmode=${POSTGRES_SSL_MODE:disable}
+    username: ${POSTGRES_USER:travel_ticket}
+    password: ${POSTGRES_PASSWORD:travel_ticket}
     hikari:
-      maximum-pool-size: 80
-      minimum-idle: 10
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:40}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 30000
   data:
     redis:
-      host: redis
-      port: 6379
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+      lettuce:
+        pool:
+          max-active: 64
+          max-idle: 16
+          min-idle: 4
     elasticsearch:
       repositories:
-        enabled: true
+        enabled: ${ES_ENABLED:true}
   elasticsearch:
-    uris: http://elasticsearch:9200
+    uris: ${ES_URIS:http://127.0.0.1:9200}
+    username: ${ES_USERNAME:}
+    password: ${ES_PASSWORD:}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: false
   cache:
     type: redis
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
   health:
     elasticsearch:
-      enabled: true
+      enabled: ${ES_ENABLED:true}
 
 logging:
   level:
     com.codex.travel.ticket: INFO
+    org.springframework.data.elasticsearch.client.WIRE: OFF

@@ -40,6 +40,8 @@ docker compose up -d postgres redis
 .\run-platform.cmd
 ```
 
+完整平台模式会先发布 Nacos 配置，然后启动应用。启动参数不再覆盖数据库、Redis 或 ES 地址，应用会从 Nacos Data ID 中读取这些运行配置。
+
 完整平台模式会设置：
 
 ```text
@@ -63,19 +65,33 @@ travel-ticket-service.yaml
 src/main/resources/nacos/travel-ticket-service.yaml
 ```
 
-可在 Nacos 控制台创建同名配置，并把样例内容导入。应用本地配置已经接入：
+发布到本地 Nacos：
+
+```powershell
+.\publish-nacos-config.cmd
+```
+
+也可以在 Nacos 控制台创建同名配置，并把样例内容导入。当前项目约定：
+
+- `application.yml` 只保留应用名、Nacos Config 和 Nacos Discovery 连接信息。
+- `travel-ticket-service.yaml` 保存端口、PostgreSQL、Redis、Elasticsearch、Flyway、JPA、Actuator 和日志配置。
+- 完整平台模式启动时通过 `spring.config.import=optional:nacos:travel-ticket-service.yaml` 从 Nacos 获取运行配置。
+
+应用本地启动配置：
 
 ```yaml
 spring:
+  application:
+    name: travel-ticket-service
   config:
     import:
       - optional:nacos:travel-ticket-service.yaml
   cloud:
     nacos:
       discovery:
-        enabled: ${NACOS_ENABLED:false}
+        enabled: ${NACOS_ENABLED:true}
       config:
-        enabled: ${NACOS_ENABLED:false}
+        enabled: ${NACOS_ENABLED:true}
         refresh-enabled: true
 ```
 
