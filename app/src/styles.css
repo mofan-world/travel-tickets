@@ -1,0 +1,640 @@
+:root {
+  color-scheme: light;
+  --bg: #f4f7f8;
+  --surface: #ffffff;
+  --surface-soft: #edf4f5;
+  --ink: #1c2529;
+  --muted: #69777f;
+  --line: #dbe5e8;
+  --teal: #0f766e;
+  --blue: #285f9d;
+  --green: #177a5b;
+  --amber: #a86700;
+  --red: #b42318;
+  --shadow: 0 18px 48px rgba(24, 42, 50, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[v-cloak] {
+  display: none;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    var(--bg);
+  background-size: 42px 42px;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-panel {
+  width: min(460px, 100%);
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.auth-brand,
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-brand p,
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.auth-brand h1,
+.topbar h1,
+.panel h2,
+.dialog-head h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.auth-brand h1 {
+  font-size: 28px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  background: linear-gradient(145deg, #138a75, #285f9d);
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 26px 0 18px;
+  padding: 5px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.auth-tabs button {
+  min-height: 38px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 800;
+}
+
+.auth-tabs button.active {
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(24, 42, 50, 0.08);
+}
+
+.auth-form {
+  display: grid;
+  gap: 15px;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  padding: 22px 18px;
+  color: #fff;
+  background: #122f37;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small {
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.67);
+}
+
+.sidebar nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  margin-top: 34px;
+}
+
+.sidebar a {
+  min-height: 42px;
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.sidebar a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-box {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
+
+.user-box span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.user-box button {
+  justify-self: start;
+  min-height: 32px;
+  margin-top: 6px;
+  padding: 0 10px;
+  color: #fff;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.topbar h1 {
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.08;
+}
+
+.topbar-actions,
+.dialog-actions,
+.inline-actions,
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.primary-action,
+.ghost-action,
+.row-actions button,
+.inline-actions button,
+.icon-action {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.primary-action {
+  color: #fff;
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+.ghost-action,
+.row-actions button,
+.inline-actions button,
+.icon-action {
+  color: var(--ink);
+  background: #fff;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.metric,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(24, 42, 50, 0.06);
+}
+
+.metric {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.metric span,
+.metric small {
+  color: var(--muted);
+}
+
+.metric strong {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(150px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.ticket-panel {
+  grid-row: span 2;
+}
+
+.panel {
+  min-width: 0;
+  padding: 18px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.panel-head span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+td strong,
+td small {
+  display: block;
+}
+
+td small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.status,
+.risk {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.status[data-status="待审批"],
+.status[data-status="待补票"] {
+  color: #725000;
+  background: #fff4cc;
+}
+
+.status[data-status="已通过"],
+.status[data-status="已核销"] {
+  color: #146345;
+  background: #dff8ed;
+}
+
+.status[data-status="异常"],
+.status[data-status="已驳回"] {
+  color: #9f1f17;
+  background: #ffe3df;
+}
+
+.risk[data-risk="无"] {
+  color: #146345;
+  background: #dff8ed;
+}
+
+.risk[data-risk="低"] {
+  color: #285f9d;
+  background: #e0efff;
+}
+
+.risk[data-risk="中"] {
+  color: #725000;
+  background: #fff4cc;
+}
+
+.risk[data-risk="高"] {
+  color: #9f1f17;
+  background: #ffe3df;
+}
+
+.row-actions {
+  min-width: 124px;
+}
+
+.row-actions button,
+.inline-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.stack-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stack-item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: #f8fafb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.stack-item header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stack-item p,
+.empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ticket-dialog {
+  width: min(820px, calc(100vw - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(18, 48, 55, 0.28);
+}
+
+.ticket-dialog::backdrop {
+  background: rgba(18, 48, 55, 0.38);
+}
+
+.ticket-form {
+  padding: 20px;
+  background: #fff;
+}
+
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.icon-action {
+  width: 40px;
+  padding: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  max-width: min(360px, calc(100vw - 48px));
+  padding: 12px 14px;
+  color: #fff;
+  background: #122f37;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.status[data-status="待审批"],
+.status[data-status="待补票"] {
+  color: #725000;
+  background: #fff4cc;
+}
+
+.status[data-status="已通过"],
+.status[data-status="已核销"] {
+  color: #146345;
+  background: #dff8ed;
+}
+
+.status[data-status="异常"],
+.status[data-status="已驳回"] {
+  color: #9f1f17;
+  background: #ffe3df;
+}
+
+.risk[data-risk="无"] {
+  color: #146345;
+  background: #dff8ed;
+}
+
+.risk[data-risk="低"] {
+  color: #285f9d;
+  background: #e0efff;
+}
+
+.risk[data-risk="中"] {
+  color: #725000;
+  background: #fff4cc;
+}
+
+.risk[data-risk="高"] {
+  color: #9f1f17;
+  background: #ffe3df;
+}
+
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    padding: 18px;
+  }
+
+  .brand div,
+  .sidebar nav a,
+  .user-box {
+    font-size: 0;
+  }
+
+  .sidebar nav a::first-letter,
+  .user-box strong::first-letter {
+    font-size: 16px;
+  }
+
+  .metric-grid,
+  .filters,
+  .content-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: auto;
+    overflow-x: auto;
+  }
+
+  .sidebar nav {
+    display: flex;
+    margin-top: 0;
+  }
+
+  .workspace {
+    padding: 18px;
+  }
+
+  .topbar,
+  .metric-grid,
+  .filters,
+  .content-grid,
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .topbar h1 {
+    font-size: 30px;
+  }
+}

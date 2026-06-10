@@ -1,6 +1,6 @@
 # 出差车票管理系统
 
-面向约 100 万注册用户的企业出差车票管理系统，覆盖车票归集、审批、风险识别、报销协同、统计汇总和全文检索。项目包含静态管理端原型、Java 后端、PostgreSQL 数据模型、OpenAPI 契约和架构设计文档。
+面向约 100 万注册用户的企业出差车票管理系统，覆盖车票归集、审批、补票、核销、风险识别、统计汇总和全文检索。项目包含 Vue 3 前端、Java Spring Boot 后端、PostgreSQL 数据模型、Redis 缓存、Nacos 配置与服务发现、Elasticsearch 搜索能力以及 OpenAPI 契约。
 
 ## 技术栈
 
@@ -9,24 +9,44 @@
 - 缓存：Redis 7
 - 配置中心与服务发现：Nacos 2.3
 - 搜索：Elasticsearch 8
-- 前端原型：HTML、CSS、JavaScript
+- 前端：Vue 3、HTML、CSS、Node.js 静态构建脚本
 
 ## 项目结构
 
 ```text
-app/                 管理端静态原型
+app/                 Vue 3 管理端前端
 backend/             Spring Boot 后端服务
 api/openapi.yaml     API 契约
 database/schema.sql  面向生产的 PostgreSQL 数据模型
 docs/architecture.md 百万用户规模架构设计
 ```
 
-## 快速预览前端
+## 前端运行
 
-直接用浏览器打开：
+前端使用随项目提交的 Vue 3 浏览器运行时，不需要联网安装 npm 依赖。
+
+```powershell
+cd app
+npm run dev
+```
+
+默认地址：
 
 ```text
-app/index.html
+http://127.0.0.1:5173
+```
+
+构建与预览：
+
+```powershell
+npm run build
+npm run preview
+```
+
+前端包含注册、登录、车票新增、编辑、删除、审批、驳回、补票、筛选、风险提示和 CSV 导出。演示账号：
+
+```text
+admin@travel.local / admin123
 ```
 
 ## 后端运行
@@ -111,4 +131,4 @@ curl -X POST "http://localhost:8080/api/v1/search/tickets/reindex" `
 - 月新增车票：3,000,000 到 8,000,000
 - 写入峰值：2,500 TPS
 - 读取峰值：15,000 QPS
-- 核心接口 P95：300ms 内
+- 核心接口 P95：200ms 内

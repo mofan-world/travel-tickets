@@ -20,6 +20,7 @@ Thumbs.db
 
 # Dependency folders
 node_modules/
+.npm-cache/
 
 # Secrets and local overrides
 .env
@@ -33,3 +34,5 @@ application-local.yaml
 tmp/
 temp/
 *.tmp
+.edge-profile/
+.chrome-profile*/
