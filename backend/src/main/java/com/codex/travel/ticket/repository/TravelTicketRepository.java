@@ -31,6 +31,8 @@ public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long
 
     long countByTenantIdAndRiskLevelNot(Long tenantId, RiskLevel riskLevel);
 
+    Page<TravelTicket> findByTenantIdAndRiskLevelNot(Long tenantId, RiskLevel riskLevel, Pageable pageable);
+
     List<TravelTicket> findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(Long tenantId, RiskLevel riskLevel);
 
     @Query("select coalesce(sum(t.amount), 0) from TravelTicket t where t.tenantId = :tenantId and t.status = :status")

@@ -259,6 +259,7 @@
                   <p class="eyebrow">风险预警</p>
                   <h2>需要复核</h2>
                 </div>
+                <span>{{ riskRangeText }} / 共 {{ riskPager.total }} 条</span>
               </div>
               <div class="stack-list">
                 <section v-for="ticket in riskTickets" :key="ticket.id" class="stack-item">
@@ -267,8 +268,24 @@
                     <span>{{ ticket.riskLevel }}</span>
                   </header>
                   <p>{{ ticket.ticketNo }}，{{ ticket.departureCity }} 到 {{ ticket.arrivalCity }}，凭证：{{ ticket.attachmentStatus }}</p>
+                  <p>{{ ticket.message }}</p>
                 </section>
                 <p v-if="!riskTickets.length" class="empty">暂无风险车票</p>
+              </div>
+              <div class="pager compact-pager">
+                <p>第 {{ riskPager.page + 1 }} / {{ riskPageCount }} 页</p>
+                <div class="pager-controls">
+                  <label>
+                    每页
+                    <select v-model.number="riskPager.size" @change="resetRiskPageAndReload">
+                      <option :value="5">5</option>
+                      <option :value="10">10</option>
+                      <option :value="20">20</option>
+                    </select>
+                  </label>
+                  <button type="button" @click="goRiskPage(riskPager.page - 1)" :disabled="loading || riskPager.page === 0">上一页</button>
+                  <button type="button" @click="goRiskPage(riskPager.page + 1)" :disabled="loading || riskPager.page + 1 >= riskPageCount">下一页</button>
+                </div>
               </div>
             </article>
           </section>

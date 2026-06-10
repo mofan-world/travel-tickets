@@ -283,6 +283,12 @@ createApp({
       total: 0,
     });
 
+    const riskPager = reactive({
+      page: 0,
+      size: 5,
+      total: 0,
+    });
+
     const ticketForm = reactive(emptyTicketForm());
     const statuses = ["全部", "待审批", "已通过", "已驳回", "待补票", "异常", "已核销"];
     const ticketTypes = ["全部", "高铁", "动车", "普铁", "城际", "飞机", "其他"];
@@ -324,24 +330,24 @@ createApp({
 
     const ticketPageCount = computed(() => pageCount(ticketPager));
     const pendingPageCount = computed(() => pageCount(pendingPager));
+    const riskPageCount = computed(() => pageCount(riskPager));
     const ticketRangeText = computed(() => pageRange(ticketPager, tickets.value.length));
     const pendingRangeText = computed(() => pageRange(pendingPager, pendingTickets.value.length));
+    const riskRangeText = computed(() => pageRange(riskPager, riskEvents.value.length));
 
     const riskTickets = computed(() => {
-      if (riskEvents.value.length) {
-        return riskEvents.value.map((event) => ({
-          id: event.ticketId,
-          employeeName: event.employeeName,
-          department: event.department,
-          ticketNo: event.ticketNo,
-          carrierNo: event.carrierNo,
-          departureCity: event.route?.split(" -> ")[0] || "",
-          arrivalCity: event.route?.split(" -> ")[1] || "",
-          attachmentStatus: attachmentLabel[event.attachmentStatus] || event.attachmentStatus,
-          riskLevel: riskLabel[event.riskLevel] || event.riskLevel,
-        }));
-      }
-      return tickets.value.filter((ticket) => ticket.riskLevel !== "无").slice(0, 5);
+      return riskEvents.value.map((event) => ({
+        id: event.ticketId,
+        employeeName: event.employeeName,
+        department: event.department,
+        ticketNo: event.ticketNo,
+        carrierNo: event.carrierNo,
+        departureCity: event.route?.split(" -> ")[0] || "",
+        arrivalCity: event.route?.split(" -> ")[1] || "",
+        attachmentStatus: attachmentLabel[event.attachmentStatus] || event.attachmentStatus,
+        riskLevel: riskLabel[event.riskLevel] || event.riskLevel,
+        message: event.message,
+      }));
     });
 
     async function api(path, options = {}) {
@@ -389,6 +395,13 @@ createApp({
       pager.total = Number(result?.total ?? 0);
     }
 
+    function applyRiskPage(result) {
+      riskEvents.value = result?.items || [];
+      riskPager.page = Number(result?.page ?? riskPager.page);
+      riskPager.size = Number(result?.size ?? riskPager.size);
+      riskPager.total = Number(result?.total ?? 0);
+    }
+
     async function fetchTicketRecords() {
       const status = statusEnum[filters.status];
       const query = new URLSearchParams({
@@ -424,6 +437,14 @@ createApp({
       return api(`/api/v1/tickets?${query}`);
     }
 
+    async function fetchRiskEvents() {
+      const query = new URLSearchParams({
+        page: String(riskPager.page),
+        size: String(riskPager.size),
+      });
+      return api(`/api/v1/risk/events?${query}`);
+    }
+
     function resetTicketPageAndReload() {
       ticketPager.page = 0;
       reloadData();
@@ -432,6 +453,11 @@ createApp({
     function resetPendingPageAndReload() {
       pendingPager.page = 0;
       reloadPendingApprovals();
+    }
+
+    function resetRiskPageAndReload() {
+      riskPager.page = 0;
+      reloadRiskEvents();
     }
 
     function goTicketPage(page) {
@@ -452,9 +478,24 @@ createApp({
       reloadPendingApprovals();
     }
 
+    function goRiskPage(page) {
+      const nextPage = Math.min(Math.max(page, 0), riskPageCount.value - 1);
+      if (nextPage === riskPager.page) {
+        return;
+      }
+      riskPager.page = nextPage;
+      reloadRiskEvents();
+    }
+
     async function reloadPendingApprovals() {
       await runWithLoading(async () => {
         applyPage(await fetchPendingApprovals(), pendingPager, pendingTickets);
+      }).catch((error) => showMessage(error.message));
+    }
+
+    async function reloadRiskEvents() {
+      await runWithLoading(async () => {
+        applyRiskPage(await fetchRiskEvents());
       }).catch((error) => showMessage(error.message));
     }
 
@@ -499,16 +540,16 @@ createApp({
       }
 
       await runWithLoading(async () => {
-        const [listResult, pendingResult, summary, risks] = await Promise.all([
+        const [listResult, pendingResult, riskResult, summary] = await Promise.all([
           fetchTicketRecords(),
           fetchPendingApprovals(),
+          fetchRiskEvents(),
           api("/api/v1/reports/summary"),
-          api("/api/v1/risk/events"),
         ]);
 
         applyPage(listResult, ticketPager, tickets);
         applyPage(pendingResult, pendingPager, pendingTickets);
-        riskEvents.value = risks || [];
+        applyRiskPage(riskResult);
         metrics.total = summary?.ticketCount || 0;
         metrics.pendingAmount = Number(summary?.pendingAmount || 0);
         metrics.riskRate = Math.round(Number(summary?.riskRate || 0) * 100);
@@ -680,6 +721,7 @@ createApp({
       filters,
       filteredTickets,
       goPendingPage,
+      goRiskPage,
       goTicketPage,
       login,
       loginForm,
@@ -696,9 +738,14 @@ createApp({
       registerForm,
       reindexSearch,
       reloadData,
+      reloadRiskEvents,
       resetPendingPageAndReload,
+      resetRiskPageAndReload,
       resetTicketPageAndReload,
       removeTicket,
+      riskPageCount,
+      riskPager,
+      riskRangeText,
       riskTickets,
       saveTicket,
       seedDemoData,

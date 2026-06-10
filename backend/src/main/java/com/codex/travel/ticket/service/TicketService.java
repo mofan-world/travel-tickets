@@ -141,28 +141,41 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<RiskEventResponse> listRiskEvents(Long tenantId) {
-        return redisSnapshotService.readRiskEvents(tenantId)
-                .orElseGet(() -> loadRiskEvents(tenantId));
+    public PageResult<RiskEventResponse> listRiskEvents(Long tenantId, int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.min(Math.max(size, 1), 100);
+        return redisSnapshotService.readRiskEvents(tenantId, normalizedPage, normalizedSize)
+                .orElseGet(() -> loadRiskEvents(tenantId, normalizedPage, normalizedSize));
     }
 
-    private java.util.List<RiskEventResponse> loadRiskEvents(Long tenantId) {
-        java.util.List<RiskEventResponse> result = ticketRepository.findTop20ByTenantIdAndRiskLevelNotOrderByCreatedAtDesc(tenantId, RiskLevel.NONE)
-                .stream()
-                .map(ticket -> new RiskEventResponse(
-                        ticket.getId(),
-                        ticket.getTicketNo(),
-                        ticket.getEmployeeName(),
-                        ticket.getDepartment(),
-                        ticket.getDepartureCity() + " -> " + ticket.getArrivalCity(),
-                        ticket.getCarrierNo(),
-                        ticket.getRiskLevel(),
-                        ticket.getAttachmentStatus(),
-                        riskMessage(ticket),
-                        ticket.getCreatedAt()))
-                .toList();
-        redisSnapshotService.writeRiskEvents(tenantId, result);
+    private PageResult<RiskEventResponse> loadRiskEvents(Long tenantId, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<TravelTicket> tickets = ticketRepository.findByTenantIdAndRiskLevelNot(tenantId, RiskLevel.NONE, pageRequest);
+
+        PageResult<RiskEventResponse> result = new PageResult<>(
+                tickets.getContent().stream().map(this::toRiskEventResponse).toList(),
+                tickets.getNumber(),
+                tickets.getSize(),
+                tickets.getTotalElements());
+        redisSnapshotService.writeRiskEvents(tenantId, page, size, result);
         return result;
+    }
+
+    private RiskEventResponse toRiskEventResponse(TravelTicket ticket) {
+        return new RiskEventResponse(
+                ticket.getId(),
+                ticket.getTicketNo(),
+                ticket.getEmployeeName(),
+                ticket.getDepartment(),
+                ticket.getDepartureCity() + " -> " + ticket.getArrivalCity(),
+                ticket.getCarrierNo(),
+                ticket.getRiskLevel(),
+                ticket.getAttachmentStatus(),
+                riskMessage(ticket),
+                ticket.getCreatedAt());
     }
 
     @Transactional(readOnly = true)

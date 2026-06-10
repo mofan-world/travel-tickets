@@ -74,13 +74,13 @@ public class RedisSnapshotService {
         writeReadModel(ticketPageKey(tenantId, status, page, size), result);
     }
 
-    public Optional<List<RiskEventResponse>> readRiskEvents(Long tenantId) {
-        return read(riskEventsKey(tenantId), new TypeReference<>() {
+    public Optional<PageResult<RiskEventResponse>> readRiskEvents(Long tenantId, int page, int size) {
+        return read(riskEventsKey(tenantId, page, size), new TypeReference<>() {
         });
     }
 
-    public void writeRiskEvents(Long tenantId, List<RiskEventResponse> result) {
-        writeReadModel(riskEventsKey(tenantId), result);
+    public void writeRiskEvents(Long tenantId, int page, int size, PageResult<RiskEventResponse> result) {
+        writeReadModel(riskEventsKey(tenantId, page, size), result);
     }
 
     public Optional<DashboardSummaryResponse> readDashboardSummary(Long tenantId) {
@@ -154,8 +154,8 @@ public class RedisSnapshotService {
                 + (status == null ? "ALL" : status.name()) + ":" + page + ":" + size;
     }
 
-    private String riskEventsKey(Long tenantId) {
-        return "travel-ticket:read:v1:risk-events:" + tenantId + ":" + tenantVersion(tenantId);
+    private String riskEventsKey(Long tenantId, int page, int size) {
+        return "travel-ticket:read:v1:risk-events:" + tenantId + ":" + tenantVersion(tenantId) + ":" + page + ":" + size;
     }
 
     private String dashboardSummaryKey(Long tenantId) {

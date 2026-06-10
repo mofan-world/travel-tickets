@@ -444,7 +444,15 @@ td small {
 }
 
 .row-actions {
-  min-width: 124px;
+  min-width: 96px;
+}
+
+td.row-actions {
+  display: table-cell;
+  width: 96px;
+  min-width: 96px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .row-actions button,
@@ -452,6 +460,15 @@ td small {
   min-height: 32px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+td.row-actions button {
+  display: block;
+  width: 100%;
+}
+
+td.row-actions button + button {
+  margin-top: 6px;
 }
 
 .row-actions .danger-text {
