@@ -1,6 +1,7 @@
 package com.codex.travel.ticket.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -70,9 +72,19 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public PageResult<TicketResponse> list(Long tenantId, TicketStatus status, int page, int size) {
+    public PageResult<TicketResponse> list(
+            Long tenantId,
+            TicketStatus status,
+            String keyword,
+            String city,
+            String travelType,
+            int page,
+            int size) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.min(Math.max(size, 1), 200);
+        if (hasQueryFilters(keyword, city, travelType)) {
+            return loadTicketPage(tenantId, status, keyword, city, travelType, normalizedPage, normalizedSize);
+        }
         return redisSnapshotService.readTicketPage(tenantId, status, normalizedPage, normalizedSize)
                 .orElseGet(() -> loadTicketPage(tenantId, status, normalizedPage, normalizedSize));
     }
@@ -93,6 +105,24 @@ public class TicketService {
                 tickets.getTotalElements());
         redisSnapshotService.writeTicketPage(tenantId, status, page, size, result);
         return result;
+    }
+
+    private PageResult<TicketResponse> loadTicketPage(
+            Long tenantId,
+            TicketStatus status,
+            String keyword,
+            String city,
+            String travelType,
+            int page,
+            int size) {
+        Page<TravelTicket> tickets = ticketRepository.findAll(
+                ticketSpecification(tenantId, status, keyword, city, travelType, false),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return new PageResult<>(
+                tickets.getContent().stream().map(TicketResponse::from).toList(),
+                tickets.getNumber(),
+                tickets.getSize(),
+                tickets.getTotalElements());
     }
 
     @Transactional
@@ -141,9 +171,19 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public PageResult<RiskEventResponse> listRiskEvents(Long tenantId, int page, int size) {
+    public PageResult<RiskEventResponse> listRiskEvents(
+            Long tenantId,
+            TicketStatus status,
+            String keyword,
+            String city,
+            String travelType,
+            int page,
+            int size) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = Math.min(Math.max(size, 1), 100);
+        if (status != null || hasQueryFilters(keyword, city, travelType)) {
+            return loadRiskEvents(tenantId, status, keyword, city, travelType, normalizedPage, normalizedSize);
+        }
         return redisSnapshotService.readRiskEvents(tenantId, normalizedPage, normalizedSize)
                 .orElseGet(() -> loadRiskEvents(tenantId, normalizedPage, normalizedSize));
     }
@@ -162,6 +202,71 @@ public class TicketService {
                 tickets.getTotalElements());
         redisSnapshotService.writeRiskEvents(tenantId, page, size, result);
         return result;
+    }
+
+    private PageResult<RiskEventResponse> loadRiskEvents(
+            Long tenantId,
+            TicketStatus status,
+            String keyword,
+            String city,
+            String travelType,
+            int page,
+            int size) {
+        Page<TravelTicket> tickets = ticketRepository.findAll(
+                ticketSpecification(tenantId, status, keyword, city, travelType, true),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return new PageResult<>(
+                tickets.getContent().stream().map(this::toRiskEventResponse).toList(),
+                tickets.getNumber(),
+                tickets.getSize(),
+                tickets.getTotalElements());
+    }
+
+    private Specification<TravelTicket> ticketSpecification(
+            Long tenantId,
+            TicketStatus status,
+            String keyword,
+            String city,
+            String travelType,
+            boolean riskOnly) {
+        return (root, query, criteriaBuilder) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("tenantId"), tenantId));
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            if (riskOnly) {
+                predicates.add(criteriaBuilder.notEqual(root.get("riskLevel"), RiskLevel.NONE));
+            }
+            if (StringUtils.hasText(city) && !"全部".equals(city.trim())) {
+                String normalizedCity = city.trim();
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.equal(root.get("departureCity"), normalizedCity),
+                        criteriaBuilder.equal(root.get("arrivalCity"), normalizedCity)));
+            }
+            if (StringUtils.hasText(travelType)) {
+                predicates.add(criteriaBuilder.equal(root.get("travelType"), normalizeTravelType(travelType)));
+            }
+            if (StringUtils.hasText(keyword)) {
+                String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("employeeName")), pattern),
+                        criteriaBuilder.like(root.get("employeeId").as(String.class), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("department")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("ticketNo")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("carrierNo")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("departureCity")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("arrivalCity")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("tripPurpose")), pattern)));
+            }
+            return criteriaBuilder.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
+    }
+
+    private boolean hasQueryFilters(String keyword, String city, String travelType) {
+        return StringUtils.hasText(keyword)
+                || (StringUtils.hasText(city) && !"全部".equals(city.trim()))
+                || StringUtils.hasText(travelType);
     }
 
     private RiskEventResponse toRiskEventResponse(TravelTicket ticket) {

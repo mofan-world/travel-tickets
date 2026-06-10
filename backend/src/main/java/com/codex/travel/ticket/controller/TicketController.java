@@ -37,9 +37,12 @@ public class TicketController {
     public ApiResponse<PageResult<TicketResponse>> list(
             @RequestHeader("X-Tenant-Id") Long tenantId,
             @RequestParam(name = "status", required = false) TicketStatus status,
+            @RequestParam(name = "q", required = false) String keyword,
+            @RequestParam(name = "city", required = false) String city,
+            @RequestParam(name = "travelType", required = false) String travelType,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "50") int size) {
-        return ApiResponse.ok(ticketService.list(tenantId, status, page, size));
+        return ApiResponse.ok(ticketService.list(tenantId, status, keyword, city, travelType, page, size));
     }
 
     @PostMapping

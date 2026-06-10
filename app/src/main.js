@@ -37,6 +37,30 @@ const ticketTypeEnum = {
 
 const ticketTypeLabel = Object.fromEntries(Object.entries(ticketTypeEnum).map(([label, value]) => [value, label]));
 
+const cityOptions = [
+  "全部",
+  "北京",
+  "上海",
+  "广州",
+  "深圳",
+  "杭州",
+  "成都",
+  "武汉",
+  "南京",
+  "西安",
+  "重庆",
+  "天津",
+  "苏州",
+  "厦门",
+  "青岛",
+  "郑州",
+  "长沙",
+  "合肥",
+  "宁波",
+  "福州",
+  "昆明",
+];
+
 const attachmentEnum = {
   已上传: "UPLOADED",
   缺失: "MISSING",
@@ -280,13 +304,13 @@ createApp({
 
     const pendingPager = reactive({
       page: 0,
-      size: 5,
+      size: 20,
       total: 0,
     });
 
     const riskPager = reactive({
       page: 0,
-      size: 5,
+      size: 20,
       total: 0,
     });
 
@@ -312,14 +336,7 @@ createApp({
       risk: "按风险等级分页查看需要复核的车票",
     }[activeSection.value]));
 
-    const cities = computed(() => {
-      const values = new Set(["全部"]);
-      tickets.value.forEach((ticket) => {
-        values.add(ticket.departureCity);
-        values.add(ticket.arrivalCity);
-      });
-      return [...values].filter(Boolean);
-    });
+    const cities = cityOptions;
 
     const filteredTickets = computed(() => {
       const keyword = filters.query.trim().toLowerCase();
@@ -419,30 +436,32 @@ createApp({
       riskPager.total = Number(result?.total ?? 0);
     }
 
-    async function fetchTicketRecords() {
+    function appendSharedFilters(query, options = {}) {
+      const includeStatus = options.includeStatus !== false;
+      const keyword = filters.query.trim();
       const status = statusEnum[filters.status];
+      const travelType = ticketTypeEnum[filters.ticketType];
+      if (keyword) {
+        query.set("q", keyword);
+      }
+      if (includeStatus && status) {
+        query.set("status", status);
+      }
+      if (filters.city !== "全部") {
+        query.set("city", filters.city);
+      }
+      if (travelType) {
+        query.set("travelType", travelType);
+      }
+      return query;
+    }
+
+    async function fetchTicketRecords() {
       const query = new URLSearchParams({
         page: String(ticketPager.page),
         size: String(ticketPager.size),
       });
-      if (status) {
-        query.set("status", status);
-      }
-
-      if (filters.query.trim()) {
-        const search = new URLSearchParams({
-          q: filters.query.trim(),
-          page: String(ticketPager.page),
-          size: String(ticketPager.size),
-        });
-        try {
-          return await api(`/api/v1/search/tickets?${search}`);
-        } catch {
-          showMessage("ES 搜索不可用，已回退到数据库分页列表");
-        }
-      }
-
-      return api(`/api/v1/tickets?${query}`);
+      return api(`/api/v1/tickets?${appendSharedFilters(query)}`);
     }
 
     async function fetchPendingApprovals() {
@@ -451,7 +470,7 @@ createApp({
         page: String(pendingPager.page),
         size: String(pendingPager.size),
       });
-      return api(`/api/v1/tickets?${query}`);
+      return api(`/api/v1/tickets?${appendSharedFilters(query, { includeStatus: false })}`);
     }
 
     async function fetchRiskEvents() {
@@ -459,12 +478,26 @@ createApp({
         page: String(riskPager.page),
         size: String(riskPager.size),
       });
-      return api(`/api/v1/risk/events?${query}`);
+      return api(`/api/v1/risk/events?${appendSharedFilters(query)}`);
+    }
+
+    function resetAllPagesAndReload() {
+      ticketPager.page = 0;
+      pendingPager.page = 0;
+      riskPager.page = 0;
+      reloadData();
     }
 
     function resetTicketPageAndReload() {
-      ticketPager.page = 0;
-      reloadData();
+      resetAllPagesAndReload();
+    }
+
+    function clearFilters() {
+      filters.query = "";
+      filters.status = "全部";
+      filters.city = "全部";
+      filters.ticketType = "全部";
+      resetAllPagesAndReload();
     }
 
     function resetPendingPageAndReload() {
@@ -736,6 +769,7 @@ createApp({
       authMode,
       currentUser,
       cancelDelete,
+      clearFilters,
       confirmRemoveTicket,
       deleteTarget,
       editableStatuses,
@@ -766,6 +800,7 @@ createApp({
       reloadRiskEvents,
       resetPendingPageAndReload,
       resetRiskPageAndReload,
+      resetAllPagesAndReload,
       resetTicketPageAndReload,
       removeTicket,
       riskPageCount,

@@ -122,29 +122,37 @@
             </article>
           </section>
 
-          <section v-if="showTicketModule" class="filters" aria-label="车票筛选">
+          <section class="filters" aria-label="车票筛选">
             <label>
               搜索
-              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="resetTicketPageAndReload" />
+              <input v-model="filters.query" type="search" placeholder="员工 / 票号 / 城市 / 车次" @keyup.enter="resetAllPagesAndReload" />
             </label>
-            <label>
+            <label v-if="activeSection !== 'approvals'">
               状态
-              <select v-model="filters.status" @change="resetTicketPageAndReload">
+              <select v-model="filters.status" @change="resetAllPagesAndReload">
                 <option v-for="status in statuses" :key="status" :value="status">{{ status }}</option>
               </select>
             </label>
+            <label v-else>
+              状态
+              <input value="待审批" disabled />
+            </label>
             <label>
               城市
-              <select v-model="filters.city">
+              <select v-model="filters.city" @change="resetAllPagesAndReload">
                 <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
               </select>
             </label>
             <label>
               票种
-              <select v-model="filters.ticketType">
+              <select v-model="filters.ticketType" @change="resetAllPagesAndReload">
                 <option v-for="type in ticketTypes" :key="type" :value="type">{{ type }}</option>
               </select>
             </label>
+            <div class="filter-actions">
+              <button type="button" class="primary-action" @click="resetAllPagesAndReload" :disabled="loading">查询</button>
+              <button type="button" class="ghost-action" @click="clearFilters" :disabled="loading">重置</button>
+            </div>
           </section>
 
           <section class="content-grid" :class="{ 'single-module': !isDashboard }">
@@ -242,9 +250,9 @@
                   <label>
                     每页
                     <select v-model.number="pendingPager.size" @change="resetPendingPageAndReload">
-                      <option :value="5">5</option>
-                      <option :value="10">10</option>
                       <option :value="20">20</option>
+                      <option :value="50">50</option>
+                      <option :value="100">100</option>
                     </select>
                   </label>
                   <button type="button" @click="goPendingPage(pendingPager.page - 1)" :disabled="loading || pendingPager.page === 0">上一页</button>
@@ -278,9 +286,9 @@
                   <label>
                     每页
                     <select v-model.number="riskPager.size" @change="resetRiskPageAndReload">
-                      <option :value="5">5</option>
-                      <option :value="10">10</option>
                       <option :value="20">20</option>
+                      <option :value="50">50</option>
+                      <option :value="100">100</option>
                     </select>
                   </label>
                   <button type="button" @click="goRiskPage(riskPager.page - 1)" :disabled="loading || riskPager.page === 0">上一页</button>

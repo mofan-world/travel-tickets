@@ -12,10 +12,11 @@ import com.codex.travel.ticket.enums.TicketStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long> {
+public interface TravelTicketRepository extends JpaRepository<TravelTicket, Long>, JpaSpecificationExecutor<TravelTicket> {
 
     Page<TravelTicket> findByTenantId(Long tenantId, Pageable pageable);
 
