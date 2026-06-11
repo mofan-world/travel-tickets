@@ -3,7 +3,7 @@
   <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="travel-ticket-service"/>
 
   <property name="CONSOLE_PATTERN"
-            value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%property{appName}] [%thread] %cyan(%logger{36}) - %msg%n%ex"/>
+            value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%property{appName}] [trace=%X{traceId:-none}] [%thread] %cyan(%logger{36}) - %msg%n%ex"/>
 
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>

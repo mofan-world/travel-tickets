@@ -172,3 +172,20 @@ NACOS_ENABLED=true;NACOS_SERVER_ADDR=127.0.0.1:8848;ES_ENABLED=true;ES_URIS=http
 ```text
 HTTP GET /api/v1/tickets?page=0&size=20 status=200 elapsed=35ms tenant=10001
 ```
+
+操作日志和异常日志会同时写入 PostgreSQL：
+
+```text
+operation_logs
+exception_logs
+```
+
+运维查询接口：
+
+```powershell
+curl "http://localhost:8080/api/v1/ops/logs/operations?page=0&size=20" `
+  -H "X-Tenant-Id: 10001"
+
+curl "http://localhost:8080/api/v1/ops/logs/exceptions?page=0&size=20" `
+  -H "X-Tenant-Id: 10001"
+```
