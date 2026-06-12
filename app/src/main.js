@@ -2,7 +2,7 @@ const { createApp, computed, onMounted, reactive, ref } = window.Vue;
 
 const SESSION_KEY = "travel-ticket-session";
 const API_BASE_KEY = "travel-ticket-api-base";
-const apiBase = localStorage.getItem(API_BASE_KEY) || "http://127.0.0.1:8080";
+const apiBase = localStorage.getItem(API_BASE_KEY) || "http://127.0.0.1:80";
 
 const statusEnum = {
   全部: "",

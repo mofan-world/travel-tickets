@@ -52,7 +52,7 @@ admin@travel.local / admin123
 前端默认连接后端：
 
 ```text
-http://127.0.0.1:8080
+http://127.0.0.1:80
 ```
 
 注册、登录、车票管理、审批、风险列表和 ES 重建索引都通过后端 API 完成，不再使用浏览器本地数据作为业务主存储。
@@ -89,7 +89,7 @@ docker compose up -d
 健康检查：
 
 ```powershell
-curl http://localhost:8080/actuator/health
+curl http://localhost:80/actuator/health
 ```
 
 ## 已实现接口
@@ -129,14 +129,14 @@ travel-ticket-v1
 搜索示例：
 
 ```powershell
-curl "http://localhost:8080/api/v1/search/tickets?q=北京&page=0&size=20" `
+curl "http://localhost:80/api/v1/search/tickets?q=北京&page=0&size=20" `
   -H "X-Tenant-Id: 10001"
 ```
 
 重建索引：
 
 ```powershell
-curl -X POST "http://localhost:8080/api/v1/search/tickets/reindex" `
+curl -X POST "http://localhost:80/api/v1/search/tickets/reindex" `
   -H "X-Tenant-Id: 10001"
 ```
 
