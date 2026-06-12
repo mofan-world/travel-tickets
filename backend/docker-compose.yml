@@ -76,6 +76,16 @@ services:
     depends_on:
       - elasticsearch
 
+  travel-ticket-service:
+    image: travel-ticket-service:latest
+    container_name: travel-ticket-service
+    environment:
+      - NACOS_SERVER_ADDR=http://travel-ticket-nacos:8848
+    ports:
+      - "8080:8080"
+    depends_on:
+      - nacos
+
 volumes:
   postgres-data:
   redis-data:

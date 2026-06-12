@@ -1,0 +1,14 @@
+# 使用官方 OpenJDK 17 镜像
+FROM phenompeople/openjdk17:latest
+
+# 在容器中创建应用目录
+WORKDIR /app
+
+# 将本地 jar 包复制到容器
+COPY target/travel-ticket-service-0.1.0-SNAPSHOT.jar /app/myapp.jar
+
+# 暴露应用端口（根据你的应用端口修改）
+EXPOSE 8080
+
+# 启动命令
+ENTRYPOINT ["java", "-jar", "/app/myapp.jar"]
