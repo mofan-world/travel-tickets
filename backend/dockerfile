@@ -8,7 +8,7 @@ WORKDIR /app
 COPY target/travel-ticket-service-0.1.0-SNAPSHOT.jar /app/myapp.jar
 
 # 暴露应用端口（根据你的应用端口修改）
-EXPOSE 8080
+EXPOSE 80
 
 # 启动命令
 ENTRYPOINT ["java", "-jar", "/app/myapp.jar"]

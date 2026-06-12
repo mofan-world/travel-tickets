@@ -106,14 +106,14 @@ travel-ticket-v1
 搜索接口：
 
 ```powershell
-curl "http://localhost:8080/api/v1/search/tickets?q=北京&page=0&size=20" `
+curl "http://localhost:80/api/v1/search/tickets?q=北京&page=0&size=20" `
   -H "X-Tenant-Id: 10001"
 ```
 
 如果 ES 是后续启用的，可以先把当前租户已有 PostgreSQL 数据重建到 ES：
 
 ```powershell
-curl -X POST "http://localhost:8080/api/v1/search/tickets/reindex" `
+curl -X POST "http://localhost:80/api/v1/search/tickets/reindex" `
   -H "X-Tenant-Id: 10001"
 ```
 
@@ -122,7 +122,7 @@ curl -X POST "http://localhost:8080/api/v1/search/tickets/reindex" `
 创建车票：
 
 ```powershell
-curl -X POST http://localhost:8080/api/v1/tickets `
+curl -X POST http://localhost:80/api/v1/tickets `
   -H "Content-Type: application/json" `
   -H "X-Tenant-Id: 10001" `
   -d '{
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8080/api/v1/tickets `
 审批通过：
 
 ```powershell
-curl -X POST http://localhost:8080/api/v1/approvals/tickets/1/actions `
+curl -X POST http://localhost:80/api/v1/approvals/tickets/1/actions `
   -H "Content-Type: application/json" `
   -H "X-Tenant-Id: 10001" `
   -d '{"action": "approve", "comment": "符合差旅标准"}'
@@ -150,7 +150,7 @@ curl -X POST http://localhost:8080/api/v1/approvals/tickets/1/actions `
 健康检查：
 
 ```powershell
-curl http://localhost:8080/actuator/health
+curl http://localhost:80/actuator/health
 ```
 
 ## IDEA 控制台日志
@@ -183,9 +183,9 @@ exception_logs
 运维查询接口：
 
 ```powershell
-curl "http://localhost:8080/api/v1/ops/logs/operations?page=0&size=20" `
+curl "http://localhost:80/api/v1/ops/logs/operations?page=0&size=20" `
   -H "X-Tenant-Id: 10001"
 
-curl "http://localhost:8080/api/v1/ops/logs/exceptions?page=0&size=20" `
+curl "http://localhost:80/api/v1/ops/logs/exceptions?page=0&size=20" `
   -H "X-Tenant-Id: 10001"
 ```
