@@ -52,6 +52,7 @@ services:
     image: nacos/nacos-server:v2.3.2
     platform: linux/amd64
     container_name: travel-ticket-nacos
+    restart: always
     environment:
       MODE: standalone
       NACOS_AUTH_ENABLE: "false"
@@ -60,6 +61,10 @@ services:
     ports:
       - "8848:8848"
       - "9848:9848"
+    volumes:
+      - nacos-logs:/home/nacos/logs
+      - nacos-data:/home/nacos/data
+      - nacos-conf:/home/nacos/conf
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8848/nacos/v1/console/health/readiness || exit 1"]
       interval: 15s
@@ -97,3 +102,6 @@ volumes:
   postgres-data:
   redis-data:
   es-data:
+  nacos-data:
+  nacos-conf:
+  nacos-logs:
