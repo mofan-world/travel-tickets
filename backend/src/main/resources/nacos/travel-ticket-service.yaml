@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:${POSTGRES_PORT:5432}/${POSTGRES_DB:travel_ticket}?sslmode=${POSTGRES_SSL_MODE:disable}
+    url: jdbc:postgresql://${POSTGRES_HOST:travel-ticket-postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:travel_ticket}?sslmode=${POSTGRES_SSL_MODE:disable}
     username: ${POSTGRES_USER:travel_ticket}
     password: ${POSTGRES_PASSWORD:travel_ticket}
     hikari:
@@ -12,7 +12,7 @@ spring:
       connection-timeout: 30000
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
+      host: ${REDIS_HOST:travel-ticket-redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 3s
@@ -25,7 +25,7 @@ spring:
       repositories:
         enabled: ${ES_ENABLED:true}
   elasticsearch:
-    uris: ${ES_URIS:http://127.0.0.1:9200}
+    uris: ${ES_URIS:http://travel-ticket-es:9200}
     username: ${ES_USERNAME:}
     password: ${ES_PASSWORD:}
   flyway:
