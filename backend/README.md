@@ -34,6 +34,11 @@ docker compose up -d postgres redis
 .\run-local.cmd
 ```
 
+容器化部署模式：
+```powershell
+docker build -t travel-ticket-service:latest .
+```
+
 完整平台模式：
 
 ```powershell
